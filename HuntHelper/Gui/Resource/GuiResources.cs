@@ -26,6 +26,9 @@ public class GuiResources
             lang == ClientLanguage.English ? "english" :
             lang == ClientLanguage.French ? "french" :
             lang == ClientLanguage.German ? "german" :
+            // TC(台服)客戶端在 Dalamud 13.0.0.16 之後回報 ClientLanguage 7(TraditionalChinese),
+            // 舊版回報 4(ChineseSimplified)。用數值比較是為了相容列舉沒有 7 這個名字的舊版 Dalamud。
+            (int)lang is 4 or 5 or 7 ? "traditional chinese" :
             "japanese";
 
         return LoadGuiText(language);

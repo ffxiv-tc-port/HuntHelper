@@ -264,7 +264,7 @@ public class HuntTrainUI : IDisposable
 
             if (ImGui.TreeNode($"{GuiResources.HuntTrainGuiText["Settings"]}"))
             {
-                if (ImGui.TreeNode("cosmetic##iwanttodeletethisbutmaybesomeusersactuallyuseit"))
+                if (ImGui.TreeNode(GuiResources.HuntTrainGuiText["CosmeticTreeNode"] + "##iwanttodeletethisbutmaybesomeusersactuallyuseit"))
                 {
                     if (ImGui.BeginTable("settingsalignment", 2))
                     {
@@ -274,8 +274,8 @@ public class HuntTrainUI : IDisposable
                         ImGui.Checkbox(GuiResources.HuntTrainGuiText["LastSeen"], ref _showLastSeen);
                         ImGuiUtil.ImGui_HoveredToolTip(GuiResources.HuntTrainGuiText["LastSeenToolTip"]);
                         ImGui.TableNextColumn();
-                        ImGui.Checkbox("Show Map Name", ref _showMapName);
-                        ImGuiUtil.ImGui_HoveredToolTip("Show Map Name");
+                        ImGui.Checkbox(GuiResources.HuntTrainGuiText["ShowMapName"], ref _showMapName);
+                        ImGuiUtil.ImGui_HoveredToolTip(GuiResources.HuntTrainGuiText["ShowMapName"]);
                         ImGui.TableNextColumn();
                         ImGui.Checkbox(GuiResources.HuntTrainGuiText["ShowFlagInChat"], ref _showInChat);
                         ImGuiUtil.ImGui_HoveredToolTip(GuiResources.HuntTrainGuiText["ShowFlagInChat"]);
@@ -284,7 +284,7 @@ public class HuntTrainUI : IDisposable
                     ImGui.TreePop();
                 }
 
-                if (ImGui.TreeNode("Teleport"))
+                if (ImGui.TreeNode(GuiResources.HuntTrainGuiText["TeleportHeader"]))
                 {
                     if (ImGui.BeginTable("settingsalignment", 2))
                     {
@@ -308,7 +308,7 @@ public class HuntTrainUI : IDisposable
                     ImGui.TreePop();
                 }
 
-                if (ImGui.TreeNode("IPCRelatedStuffIdk"))
+                if (ImGui.TreeNode(GuiResources.HuntTrainGuiText["IPCTreeNode"] + "###IPCRelatedStuffIdk"))
                 {
                     if (ImGui.BeginTable("settingsalignment", 1))
                     {

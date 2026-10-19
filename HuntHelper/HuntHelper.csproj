@@ -1,13 +1,27 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+<Project Sdk="Dalamud.NET.Sdk/13.0.0">
   <PropertyGroup>
     <Authors>https://github.com/img02</Authors>
     <Company></Company>
-    <Version>1.0.0.33</Version>
     <Description>Hunt map with spawns points, A-Rank train recorder (w/ export/import sharing), TTS, Chat notifications, Counters for S-Rank</Description>
     <Copyright></Copyright>
-    <PackageProjectUrl>https://github.com/img02/HuntHelper</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/ffxiv-tc-port/HuntHelper</PackageProjectUrl>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildNumberFile>$(MSBuildProjectDirectory)\BuildNumber.txt</BuildNumberFile>
+    <_PreviousBuildNumber Condition="Exists('$(BuildNumberFile)')">$([System.IO.File]::ReadAllText('$(BuildNumberFile)').Trim())</_PreviousBuildNumber>
+    <_PreviousBuildNumber Condition="'$(_PreviousBuildNumber)' == ''">0</_PreviousBuildNumber>
+    <BuildNumber>$([MSBuild]::Add($(_PreviousBuildNumber), 1))</BuildNumber>
+    <VersionPrefix>7.15.0</VersionPrefix>
+    <Version>$(VersionPrefix).$(BuildNumber)</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+  </PropertyGroup>
+  <Target Name="PersistBuildNumber" AfterTargets="Build">
+    <WriteLinesToFile File="$(BuildNumberFile)" Lines="$(BuildNumber)" Overwrite="true" />
+  </Target>
 
 
   <ItemGroup>
@@ -28,6 +42,7 @@
     <None Remove="Data\Localisation\German.json" />
     <None Remove="Data\Localisation\japanese.json" />
     <None Remove="Data\Localisation\simplified chinese.json" />
+    <None Remove="Data\Localisation\traditional chinese.json" />
     <None Remove="Data\SB-A.json" />
     <None Remove="Data\SB-B.json" />
     <None Remove="Data\SB-S.json" />
@@ -66,6 +81,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Data\Localisation\simplified chinese.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\Localisation\traditional chinese.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Data\Localisation\french.json">

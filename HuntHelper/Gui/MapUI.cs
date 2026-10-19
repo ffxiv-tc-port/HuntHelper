@@ -10,7 +10,6 @@ using HuntHelper.Gui.Resource;
 using HuntHelper.Managers.Hunts;
 using HuntHelper.Managers.MapData;
 using HuntHelper.Managers.MapData.Models;
-using HuntHelper.Managers.NewExpansion;
 using HuntHelper.Utilities;
 using System;
 using System.Collections.Generic;
@@ -28,15 +27,15 @@ namespace HuntHelper.Gui
         private readonly Configuration _configuration;
 
         private readonly IClientState _clientState;
-        private readonly IPlayerState _playerState;
         private readonly IObjectTable _objectTable;
+        private readonly IPlayerState _playerState;
         private readonly HuntManager _huntManager;
         private readonly MapDataManager _mapDataManager;
         private readonly IGameGui _gameGui;
 
         private string _territoryName;
-        private string WorldName => _playerState.CurrentWorld.ValueNullable?.Name.ToString() ?? "Not Found";
-        private uint _territoryId;
+        private string WorldName => _objectTable.LocalPlayer?.CurrentWorld.ValueNullable?.Name.ToString() ?? "Not Found";
+        private ushort _territoryId;
 
         //used for combo box for language selection window
         private string _guiLanguage = GuiResources.Language;
@@ -115,6 +114,28 @@ namespace HuntHelper.Gui
         //Hunt Window Flag - used for toggling title bar
         private int _huntWindowFlag = (int)(ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoTitleBar);
 
+        //click-through / 穿透模式
+        private bool _clickThrough = false;
+        private int _clickThroughModifier = 1; //0=none 1=shift 2=ctrl 3=alt
+
+        //底圖來源:true = 遊戲自帶的地圖材質(不必下載);false = 下載回來的 The Hunt 底圖
+        private bool _useGameMapTexture = true;
+        //底圖取得狀況:_mapImageStatus 一律進 log(節流),_mapImageStatusIsBlank 為真時才畫在地圖上
+        //(有成功降級、畫面上看得到圖的情況就不要再蓋一層紅字)
+        private string _mapImageStatus = string.Empty;
+        private bool _mapImageStatusIsBlank = false;
+        private string _lastLoggedMapImageStatus = string.Empty;
+        //狀況是「錯誤」還是「單純還沒好/這區本來就沒圖」——決定畫面上的字用紅色還是灰色。
+        private bool _mapImageStatusIsError = false;
+        //這個狀況要用哪個 log 等級寫出去(真問題 Information,常態情況 Debug)。
+        private bool _mapImageStatusIsNoteworthy = false;
+        //遊戲內建地圖材質從哪一刻開始一直處於「載入中」。0 ＝ 目前不在等。
+        //🔴 Dalamud 的 SharedImmediateTexture 只要 2 秒沒被畫到就釋放自我參考,回來時必然有幾幀是 null;
+        //  那幾幀不可以當成「載不到」報出來。
+        private long _gameMapTextureLoadingSinceTick = 0;
+        //等超過這個時間還沒好,才把「載入中」講出來——「不知道」本身要看得見,但不要每次重載都喊。
+        private const long GameMapTextureLoadingGraceMs = 5000;
+
         //notification stuff
         private string _ttsVoiceName;
         private int _ttsVoiceVolume;
@@ -133,6 +154,11 @@ namespace HuntHelper.Gui
         private bool _flyTxtAEnabled = true;
         private bool _flyTxtBEnabled = true;
         private bool _flyTxtSEnabled = true;
+        // 塔塔露誇獎（TataruPraise）語音通知。分級沿用上面的 A/B/S，預設值也沿用同樣的形狀
+        // （S 開、A/B 關）——A/B 在野外一直遇得到，預設開會變噪音。
+        private bool _tataruPraiseAEnabled = false;
+        private bool _tataruPraiseBEnabled = false;
+        private bool _tataruPraiseSEnabled = true;
         private bool _pointToARank = true;
         private bool _pointToBRank = true;
         private bool _pointToSRank = true;
@@ -182,15 +208,15 @@ namespace HuntHelper.Gui
             set => _settingsVisible = value;
         }
 
-        public MapUI(Configuration configuration, IClientState clientState, IPlayerState playerState,
-            IObjectTable objectTable, HuntManager huntManager,
+        public MapUI(Configuration configuration, IClientState clientState,
+            IObjectTable objectTable, IPlayerState playerState, HuntManager huntManager,
             MapDataManager mapDataManager, IGameGui gameGui)
         {
             _configuration = configuration;
 
             _clientState = clientState;
-            _playerState = playerState;
             _objectTable = objectTable;
+            _playerState = playerState;
             _huntManager = huntManager;
             _mapDataManager = mapDataManager;
             _gameGui = gameGui;
@@ -202,7 +228,7 @@ namespace HuntHelper.Gui
             _clientState.TerritoryChanged += ClientState_TerritoryChanged;
 
             LoadSettings();
-            CheckMapImageVer();
+            _ = CheckMapImageVer();
 
             if (!_configuration.ughresetdisplaypls)
             {
@@ -238,16 +264,235 @@ namespace HuntHelper.Gui
         {
 
             ImGui.SetCursorPos(Vector2.Zero);
-            if (map == null) return;
-            ImGui.Image(map.Handle, ImGui.GetWindowSize(), default,
-                new Vector2(1f, 1f), new Vector4(1f, 1f, 1f, _mapImageOpacityAsPercentage / 100));
+            if (map != null)
+            {
+                ImGui.Image(map.Handle, ImGui.GetWindowSize(), default,
+                    new Vector2(1f, 1f), new Vector4(1f, 1f, 1f, _mapImageOpacityAsPercentage / 100));
+                ImGui.SetCursorPos(Vector2.Zero);
+            }
+
+            //降級行為:取不到圖(或圖被透明度調成全透明)導致畫面真的空白時,不要靜默留白,直接在地圖上說明原因。
+            if (!_mapImageStatusIsBlank || string.IsNullOrEmpty(_mapImageStatus)) return;
+            var winSize = ImGui.GetWindowSize();
+            ImGui.SetCursorPos(new Vector2(winSize.X * 0.06f, winSize.Y * 0.45f));
+            ImGui.PushTextWrapPos(winSize.X * 0.94f);
+            //用 TextUnformatted,訊息裡帶檔名/路徑時不會被當成 printf 格式字串
+            //真的壞掉才用紅字;「還在載入」「這區沒有地圖」是常態,用灰字免得看起來像故障。
+            ImGui.PushStyleColor(ImGuiCol.Text, _mapImageStatusIsError
+                ? new Vector4(1f, 0.45f, 0.45f, 1f)
+                : new Vector4(0.72f, 0.72f, 0.72f, 1f));
+            ImGui.TextUnformatted(_mapImageStatus);
+            ImGui.PopStyleColor();
+            ImGui.PopTextWrapPos();
             ImGui.SetCursorPos(Vector2.Zero);
         }
+
+        /// <summary>
+        /// 解析這一幀要畫的底圖,並把「為什麼取不到」記錄下來(畫面提示 + 節流過的 log)。
+        /// </summary>
         private IDalamudTextureWrap? GetMapTexture()
         {
-            var mapNameEng = MapHelpers.GetMapNameInEnglish(_territoryId);
-            return _huntManager.GetMapImage(mapNameEng);
+            if (!_useMapImages)
+            {
+                _mapImageStatus = string.Empty;
+                _mapImageStatusIsBlank = false;
+                _mapImageStatusIsError = false;
+                _mapImageStatusIsNoteworthy = false;
+                //底圖關掉的期間不算在「載入中」的碼錶裡,否則重新打開會立刻誤報「載很久」。
+                _gameMapTextureLoadingSinceTick = 0;
+                return null;
+            }
+
+            var status = string.Empty;
+            var blank = false;
+            var isError = false;
+            var noteworthy = false;
+            IDalamudTextureWrap? texture;
+
+            if (_useGameMapTexture)
+            {
+                texture = _huntManager.GetGameMapImage(_territoryId, out var state, out var failReason);
+                ApplyGameTextureState(state, failReason, ref status, ref blank, ref isError, ref noteworthy);
+            }
+            else
+            {
+                var mapNameEng = MapHelpers.GetMapNameInEnglish(_territoryId);
+                texture = _huntManager.GetMapImage(mapNameEng);
+                if (texture == null)
+                {
+                    //下載的圖沒有 -> 退回遊戲自帶的地圖材質,而不是留白
+                    var fileName = _huntManager.GetMapImageFileName(mapNameEng);
+                    texture = _huntManager.GetGameMapImage(_territoryId, out var state, out var failReason);
+                    if (texture != null)
+                    {
+                        status = string.Format(GuiResources.MapGuiText["MapImageDownloadedMissingFellBack"], fileName);
+                        noteworthy = true;
+                        UpdateGameTextureLoadingClock(state);
+                    }
+                    else
+                    {
+                        ApplyGameTextureState(state, failReason, ref status, ref blank, ref isError, ref noteworthy);
+                        //遊戲材質「還在載入」時什麼都不說(等下一幀);其餘情況才講「兩邊都沒有」。
+                        if (state != HuntManager.GameMapTextureState.Loading)
+                        {
+                            status = string.Format(GuiResources.MapGuiText["MapImageAllSourcesFailed"], fileName);
+                            blank = true;
+                            isError = state == HuntManager.GameMapTextureState.Failed;
+                            noteworthy = true;
+                        }
+                    }
+                }
+                else
+                {
+                    UpdateGameTextureLoadingClock(HuntManager.GameMapTextureState.Ready);
+                }
+            }
+
+            //圖有拿到,但透明度是 0 的話畫面同樣是空白 —— 這也要講出來,否則使用者只會看到「壞掉」。
+            if (texture != null && string.IsNullOrEmpty(status) && _mapImageOpacityAsPercentage < 1f)
+            {
+                status = GuiResources.MapGuiText["MapImageOpacityIsZero"];
+                blank = true;
+            }
+
+            _mapImageStatus = status;
+            _mapImageStatusIsBlank = blank;
+            _mapImageStatusIsError = isError;
+            _mapImageStatusIsNoteworthy = noteworthy;
+
+            if (status != _lastLoggedMapImageStatus)
+            {
+                _lastLoggedMapImageStatus = status;
+                if (!string.IsNullOrEmpty(status))
+                {
+                    var line = $"Map background ({_territoryName} / territory {_territoryId}): {status}";
+                    // 要使用者回報的診斷寫 Information;
+                    //「這區本來就沒地圖」是常態、不是問題,壓到 Debug 免得洗版。
+                    if (_mapImageStatusIsNoteworthy) PluginLog.Information(line);
+                    else PluginLog.Debug(line);
+                }
+            }
+
+            return texture;
         }
+
+        /// <summary>
+        /// 記住「遊戲內建地圖材質從哪一刻起一直在載入中」。拿到圖(或轉成別的狀態)就把碼錶歸零。
+        /// </summary>
+        private void UpdateGameTextureLoadingClock(HuntManager.GameMapTextureState state)
+        {
+            if (state == HuntManager.GameMapTextureState.Loading)
+            {
+                if (_gameMapTextureLoadingSinceTick == 0) _gameMapTextureLoadingSinceTick = Environment.TickCount64;
+                return;
+            }
+            _gameMapTextureLoadingSinceTick = 0;
+        }
+
+        /// <summary>
+        /// 把 <see cref="HuntManager.GameMapTextureState"/> 轉成畫面訊息與 log 等級。
+        /// </summary>
+        /// <remarks>
+        /// 🔴 <c>Loading</c> 預設<b>完全不出聲</b> —— 那是 Dalamud 材質過期重載的常態
+        /// (SharedImmediateTexture 每 2 秒沒被畫到就釋放自我參考),不可以當成「載不到」報出來。
+        /// 但「不知道」本身要看得見:等超過 <see cref="GameMapTextureLoadingGraceMs"/> 還沒好才講出來。
+        /// </remarks>
+        private void ApplyGameTextureState(HuntManager.GameMapTextureState state, string? failReason,
+            ref string status, ref bool blank, ref bool isError, ref bool noteworthy)
+        {
+            UpdateGameTextureLoadingClock(state);
+
+            switch (state)
+            {
+                case HuntManager.GameMapTextureState.Ready:
+                    return;
+
+                case HuntManager.GameMapTextureState.Loading:
+                    var since = _gameMapTextureLoadingSinceTick;
+                    if (since != 0 && Environment.TickCount64 - since >= GameMapTextureLoadingGraceMs)
+                    {
+                        status = string.Format(GuiResources.MapGuiText["MapImageGameTextureLoading"],
+                            MapHelpers.GetGameMapTexturePath(_territoryId) ?? "?");
+                        blank = true;
+                        noteworthy = true;
+                    }
+                    return;
+
+                case HuntManager.GameMapTextureState.NoTexture:
+                    //這個區域在遊戲資料裡就沒有地圖(過場、天之御柱那類),不是台服缺檔也不是壞掉。
+                    status = GuiResources.MapGuiText["MapImageGameTextureNone"];
+                    blank = true;
+                    return;
+
+                case HuntManager.GameMapTextureState.Failed:
+                    status = string.Format(GuiResources.MapGuiText["MapImageGameTextureMissing"],
+                        MapHelpers.GetGameMapTexturePath(_territoryId) ?? "?");
+                    if (!string.IsNullOrEmpty(failReason)) status += $" ({failReason})";
+                    blank = true;
+                    isError = true;
+                    noteworthy = true;
+                    return;
+            }
+        }
+
+        #region Click-through / 穿透模式
+
+        /// <summary>
+        /// 這一幀要不要讓獵物地圖視窗完全不吃滑鼠輸入(= 點擊穿透到遊戲)。
+        /// </summary>
+        private bool ShouldClickThroughThisFrame()
+        {
+            if (!_clickThrough) return false;
+            if (IsClickThroughOverrideHeld()) return false; //按住修飾鍵時暫時取回完整控制
+            return !IsMouseOverMapWindowControls();
+        }
+
+        private static bool IsModifierHeld(int modifier)
+        {
+            var io = ImGui.GetIO();
+            return modifier switch
+            {
+                1 => io.KeyShift,
+                2 => io.KeyCtrl,
+                3 => io.KeyAlt,
+                _ => false
+            };
+        }
+
+        private bool IsClickThroughOverrideHeld() => IsModifierHeld(_clickThroughModifier);
+
+        /// <summary>
+        /// 游標是否落在「真的需要視窗吃滑鼠輸入」的元件上。
+        /// 標點、怪物圖示、玩家圖示與座標提示都是本外掛自己用 <see cref="ImGui.GetMousePos"/> 做幾何判定、
+        /// 再用 DrawList 畫出來的,視窗不吃輸入也照常運作;真正需要輸入的只有齒輪按鈕、
+        /// 標題列(拖曳/關閉)與右下角的縮放握把,所以只保留這三塊。
+        /// 底部的「Options Window」是另一個獨立的 ImGui 視窗,不受這裡的旗標影響。
+        /// </summary>
+        private bool IsMouseOverMapWindowControls()
+        {
+            var pos = _mapWindowPos;
+            var size = new Vector2(_currentWindowSize, _currentWindowSize);
+            var mouse = ImGui.GetMousePos();
+
+            if (mouse.X < pos.X || mouse.Y < pos.Y || mouse.X > pos.X + size.X || mouse.Y > pos.Y + size.Y) return false;
+
+            var local = mouse - pos;
+            var scale = ImGuiHelpers.GlobalScale;
+
+            //齒輪按鈕 —— 畫在 (8, 視窗高 - 50 - 3*scale),給一塊寬鬆的判定區
+            if (local.X <= 56 * scale && local.Y >= size.Y - 56 * scale) return true;
+
+            //標題列(沒勾「隱藏標題列」時才存在)
+            if ((_huntWindowFlag & (int)ImGuiWindowFlags.NoTitleBar) == 0 && local.Y <= ImGui.GetFrameHeight()) return true;
+
+            //右下角縮放握把
+            var grip = 20f * scale;
+            if (local.X >= size.X - grip && local.Y >= size.Y - grip) return true;
+
+            return false;
+        }
+
+        #endregion
 
         public void DrawHuntMapWindow()
         {
@@ -269,7 +514,12 @@ namespace HuntHelper.Gui
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
             ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
             ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(_mapWindowColour.X, _mapWindowColour.Y, _mapWindowColour.Z, _mapWindowOpacityAsPercentage / 100f));
-            if (ImGui.Begin("Hunt Helper", ref _mapVisible, (ImGuiWindowFlags)_huntWindowFlag))
+
+            //穿透模式:游標不在需要滑鼠的元件上時,這一幀整個視窗不吃輸入,點擊直接落到遊戲。
+            var huntWindowFlags = (ImGuiWindowFlags)_huntWindowFlag;
+            if (ShouldClickThroughThisFrame()) huntWindowFlags |= ImGuiWindowFlags.NoInputs;
+
+            if (ImGui.Begin(GuiResources.MapGuiText["MainWindowTitle"], ref _mapVisible, huntWindowFlags))
             {
                 _currentWindowSize = (int)ImGui.GetWindowSize().X;
                 _mapWindowPos = ImGui.GetWindowPos();
@@ -292,9 +542,13 @@ namespace HuntHelper.Gui
                 //=========================================
                 if (_useMapImages)
                 {
-                    _huntManager.CheckImageStatus();
-                    //if only something went wrong, such as only some maps images downloaded                    
-                    if (_huntManager.ImageFolderDoesntExist || _huntManager.HasDownloadErrors || _huntManager.NotAllImagesFound || _outOfDateImages) MapImageDownloadWindow();
+                    //用遊戲自帶地圖材質時完全不需要下載,別再跳下載視窗煩人
+                    if (!_useGameMapTexture)
+                    {
+                        _huntManager.CheckImageStatus();
+                        //if only something went wrong, such as only some maps images downloaded
+                        if (_huntManager.ImageFolderDoesntExist || _huntManager.HasDownloadErrors || _huntManager.NotAllImagesFound || _outOfDateImages) MapImageDownloadWindow();
+                    }
                     DrawMapImage(mapImage);
                 }
 
@@ -386,8 +640,8 @@ namespace HuntHelper.Gui
                 if (ImGui.BeginChild("##Options left side", ImGui.GetContentRegionAvail(), false, ImGuiWindowFlags.HorizontalScrollbar))
                 {
 
-                    if (ImGui.Button("Spawn Point Filter")) _ShowPointDisplaySettings = !_ShowPointDisplaySettings;
-                    ImGuiUtil.ImGui_HoveredToolTip("Select which Rank to display Spawn Points for");
+                    if (ImGui.Button(GuiResources.MapGuiText["SpawnPointFilterButton"])) _ShowPointDisplaySettings = !_ShowPointDisplaySettings;
+                    ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["SpawnPointFilterToolTip"]);
                     if (_ShowPointDisplaySettings)
                     {
                         ImGui.Checkbox("A", ref _displayA);
@@ -399,12 +653,12 @@ namespace HuntHelper.Gui
                         ImGui.Separator();
                         if (_spawnPointColour != HighConstrastRedPurple)
                         {
-                            if (ImGui.Button("Use High-Contrast Colour"))
+                            if (ImGui.Button(GuiResources.MapGuiText["HighContrastButton"]))
                             {
                                 _spawnPointColour = HighConstrastRedPurple;
                                 SaveSettings();
                             }
-                            ImGuiUtil.ImGui_HoveredToolTip("Use a high-contrast colour for Spawn Points,\n\nCan be changed from Visuals > Colours");
+                            ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["HighContrastToolTip"]);
                         }
                         ImGui.Separator();
                     }
@@ -414,7 +668,40 @@ namespace HuntHelper.Gui
                     ImGui.SameLine();
                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["MapImageCheckboxToolTip"]);
 
+                    if (_useMapImages)
+                    {
+                        if (ImGui.Checkbox(GuiResources.MapGuiText["UseGameMapTextureCheckbox"], ref _useGameMapTexture))
+                        {
+                            _configuration.UseGameMapTexture = _useGameMapTexture;
+                            _configuration.Save();
+                            _lastLoggedMapImageStatus = string.Empty;
+                        }
+                        ImGui.SameLine();
+                        ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["UseGameMapTextureCheckboxToolTip"]);
+                    }
+
                     ImGui.CheckboxFlags(GuiResources.MapGuiText["TitleBarCheckbox"], ref _huntWindowFlag, 1);
+
+                    if (ImGui.Checkbox(GuiResources.MapGuiText["ClickThroughCheckbox"], ref _clickThrough))
+                    {
+                        _configuration.MapWindowClickThrough = _clickThrough;
+                        _configuration.Save();
+                    }
+                    ImGui.SameLine();
+                    ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["ClickThroughCheckboxToolTip"]);
+
+                    if (_clickThrough)
+                    {
+                        var modifierNames = new[] { GuiResources.MapGuiText["ClickThroughModifierNone"], "Shift", "Ctrl", "Alt" };
+                        ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X);
+                        if (ImGui.Combo("##ClickThroughModifier", ref _clickThroughModifier, modifierNames, modifierNames.Length))
+                        {
+                            _configuration.MapWindowClickThroughModifier = _clickThroughModifier;
+                            _configuration.Save();
+                        }
+                        ImGui.PopItemWidth();
+                        ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["ClickThroughModifierToolTip"]);
+                    }
 
                     if (ImGui.Checkbox(GuiResources.MapGuiText["BackgroundScanCheckbox"], ref _enableBackgroundScan))
                     {
@@ -444,19 +731,6 @@ namespace HuntHelper.Gui
                     var tabBarHeight = 57f;
                     //default height, increase in individual tabs as needed
                     _bottomPanelHeight = tabBarHeight + 90f * ImGuiHelpers.GlobalScale;
-
-                    //todo update for next expac later
-                    if (Constants.NEW_EXPANSION)
-                    {
-                        if (ImGui.BeginTabItem("Dawntrail"))
-                        {
-                            ImGui.TextWrapped("submit found hunt position data?");
-
-                            ImGui.Checkbox("opt in", ref _configuration.DawntrailSubmitPositionsData);
-
-                            ImGui.EndTabItem();
-                        }
-                    }
 
                     if (ImGui.BeginTabItem(GuiResources.MapGuiText["GeneralTab"]))
                     {
@@ -747,10 +1021,10 @@ namespace HuntHelper.Gui
                                     ImGui.Dummy(new Vector2(0, 4f));
 
                                     ImGui.TableNextColumn();
-                                    ImGui.ColorEdit4("Path Colour", ref _playerPathColour,
+                                    ImGui.ColorEdit4(GuiResources.MapGuiText["PathColourLabel"], ref _playerPathColour,
                                         ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.PickerHueWheel);
                                     ImGui.SameLine();
-                                    ImGuiUtil.ImGui_HelpMarker("Set Alpha (A) to zero to disable.");
+                                    ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["PathColourToolTip"]);
 
                                     ImGui.Dummy(new Vector2(0, 4f));
 
@@ -789,7 +1063,7 @@ namespace HuntHelper.Gui
                             //ImGui.PushFont(UiBuilder.MonoFont); //aligns things, but then looks ugly so idk.. table?
                             if (ImGui.BeginTabItem(" A "))
                             {
-                                _bottomPanelHeight = tabBarHeight + 98f * ImGuiHelpers.GlobalScale;
+                                _bottomPanelHeight = tabBarHeight + 118f * ImGuiHelpers.GlobalScale;
                                 if (ImGui.BeginChild("##A child", ImGui.GetContentRegionAvail(), false, ImGuiWindowFlags.HorizontalScrollbar))
                                 {
                                     ImGui.Dummy(new Vector2(0, 2f));
@@ -810,7 +1084,7 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["TTSMessageLabelToolTip"]);
 
-                                    ImGui.Checkbox("FlyText##A Rank", ref _flyTxtAEnabled);
+                                    ImGui.Checkbox(GuiResources.MapGuiText["FlyText"] + "##A Rank", ref _flyTxtAEnabled);
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["FlyTextToolTip"]);
                                     ImGui.SameLine();
@@ -821,6 +1095,10 @@ namespace HuntHelper.Gui
 
                                     ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["VisualHelpToolTip"]);
 
+                                    ImGui.Checkbox("塔塔露語音##A Rank", ref _tataruPraiseAEnabled);
+                                    ImGui.SameLine();
+                                    ImGuiUtil.ImGui_HelpMarker("發現這一階的魔物時，請 TataruPraise（塔塔露誇獎）念一句把你叫回來。\n需要另外安裝該插件；沒裝的話勾了也不會有任何事發生，也不會影響狩獵追蹤。\n同一隻怪十分鐘內只會念一次（用怪物本身的識別去重，不看訊息文字）。");
+
                                     ImGui.EndChild();
                                 }
 
@@ -829,7 +1107,7 @@ namespace HuntHelper.Gui
 
                             if (ImGui.BeginTabItem(" B "))
                             {
-                                _bottomPanelHeight = tabBarHeight + 98f * ImGuiHelpers.GlobalScale;
+                                _bottomPanelHeight = tabBarHeight + 118f * ImGuiHelpers.GlobalScale;
 
                                 if (ImGui.BeginChild("##B child", ImGui.GetContentRegionAvail(), false,
                                         ImGuiWindowFlags.HorizontalScrollbar))
@@ -852,7 +1130,7 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["TTSMessageLabelToolTip"]);
 
-                                    ImGui.Checkbox("FlyText##B Rank", ref _flyTxtBEnabled);
+                                    ImGui.Checkbox(GuiResources.MapGuiText["FlyText"] + "##B Rank", ref _flyTxtBEnabled);
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["FlyTextToolTip"]);
                                     ImGui.SameLine();
@@ -863,6 +1141,10 @@ namespace HuntHelper.Gui
 
                                     ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["VisualHelpToolTip"]);
 
+                                    ImGui.Checkbox("塔塔露語音##B Rank", ref _tataruPraiseBEnabled);
+                                    ImGui.SameLine();
+                                    ImGuiUtil.ImGui_HelpMarker("發現這一階的魔物時，請 TataruPraise（塔塔露誇獎）念一句把你叫回來。\n需要另外安裝該插件；沒裝的話勾了也不會有任何事發生，也不會影響狩獵追蹤。\n同一隻怪十分鐘內只會念一次（用怪物本身的識別去重，不看訊息文字）。");
+
                                     ImGui.EndChild();
                                 }
 
@@ -871,7 +1153,7 @@ namespace HuntHelper.Gui
 
                             if (ImGui.BeginTabItem(" S "))
                             {
-                                _bottomPanelHeight = tabBarHeight + 98f * ImGuiHelpers.GlobalScale;
+                                _bottomPanelHeight = tabBarHeight + 118f * ImGuiHelpers.GlobalScale;
 
                                 if (ImGui.BeginChild("##S child", ImGui.GetContentRegionAvail(), false,
                                         ImGuiWindowFlags.HorizontalScrollbar))
@@ -894,7 +1176,7 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["TTSMessageLabelToolTip"]);
 
-                                    ImGui.Checkbox("FlyText##S Rank", ref _flyTxtSEnabled);
+                                    ImGui.Checkbox(GuiResources.MapGuiText["FlyText"] + "##S Rank", ref _flyTxtSEnabled);
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["FlyTextToolTip"]);
                                     ImGui.SameLine();
@@ -904,6 +1186,10 @@ namespace HuntHelper.Gui
                                     }
 
                                     ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["VisualHelpToolTip"]);
+
+                                    ImGui.Checkbox("塔塔露語音##S Rank", ref _tataruPraiseSEnabled);
+                                    ImGui.SameLine();
+                                    ImGuiUtil.ImGui_HelpMarker("發現這一階的魔物時，請 TataruPraise（塔塔露誇獎）念一句把你叫回來。\n需要另外安裝該插件；沒裝的話勾了也不會有任何事發生，也不會影響狩獵追蹤。\n同一隻怪十分鐘內只會念一次（用怪物本身的識別去重，不看訊息文字）。");
 
                                     /*ImGui.SameLine();
                                     ImGui.Checkbox("Save Spawn Data", ref _saveSpawnData);
@@ -1054,7 +1340,7 @@ namespace HuntHelper.Gui
                                 ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["MobInfoColourToolTip"]);
 
                                 ImGui.TableNextColumn();
-                                ImGui.Checkbox("Nearby Mob List", ref _nearbyMobListEnabled);
+                                ImGui.Checkbox(GuiResources.MapGuiText["NearbyMobListCheckbox"], ref _nearbyMobListEnabled);
                                 ImGui.SameLine();
                                 ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["NearbyMobListToolTip"] +
                                                            GuiResources.MapGuiText["DragWidgetToolTip"]);
@@ -1097,7 +1383,7 @@ namespace HuntHelper.Gui
                         ImGui.EndTabItem();
                     }
 
-                    if (ImGui.BeginTabItem("Language"))
+                    if (ImGui.BeginTabItem(GuiResources.MapGuiText["LanguageTab"]))
                     {
                         var languages = GuiResources.GetAvailableLanguages();
                         var index = Array.IndexOf(languages, _guiLanguage);
@@ -1110,29 +1396,29 @@ namespace HuntHelper.Gui
                         ImGui.PopItemWidth();
                         ImGui.SameLine();
 
-                        if (ImGui.Button("OK##change language"))
+                        if (ImGui.Button(GuiResources.MapGuiText["OKButton"] + "##change language"))
                         {
                             GuiResources.LoadGuiText(_guiLanguage);
                         }
                         ImGui.EndTabItem();
                     }
 
-                    if (ImGui.BeginTabItem("Translate"))
+                    if (ImGui.BeginTabItem(GuiResources.MapGuiText["TranslateTab"]))
                     {
-                        ImGui.TextWrapped("If you want to help translate this plugin");
+                        ImGui.TextWrapped(GuiResources.MapGuiText["TranslateTabMessage"]);
                         var url = Constants.translateUrl;
-                        ImGui.InputText(" -- click me", ref url, 100, ImGuiInputTextFlags.ReadOnly);
+                        ImGui.InputText(GuiResources.MapGuiText["ClickMeLabel"], ref url, 100, ImGuiInputTextFlags.ReadOnly);
                         if (ImGui.IsItemClicked())
                         {
                             System.Diagnostics.Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                         }
                         url = Constants.translateUrlCrowdIn;
-                        ImGui.InputText(" -- click me", ref url, 100, ImGuiInputTextFlags.ReadOnly);
+                        ImGui.InputText(GuiResources.MapGuiText["ClickMeLabel"], ref url, 100, ImGuiInputTextFlags.ReadOnly);
                         if (ImGui.IsItemClicked())
                         {
                             System.Diagnostics.Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                         }
-                        ImGui.TextWrapped("or dm me @ img#7855");
+                        ImGui.TextWrapped(GuiResources.MapGuiText["TranslateTabContact"]);
                         ImGui.EndTabItem();
                     }
 
@@ -1187,7 +1473,7 @@ namespace HuntHelper.Gui
             }
 
             ImGui.SetNextWindowSize(new Vector2(300, 100), ImGuiCond.Always);
-            if (ImGui.Begin("help, i've fallen over", ref _settingsVisible,
+            if (ImGui.Begin(GuiResources.MapGuiText["FallbackWindowTitle"], ref _settingsVisible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
                 ImGuiUtil.ImGui_CentreText(GuiResources.MapGuiText["DefaultSettingsWindowMessage"], _defaultTextColour);
@@ -1203,6 +1489,7 @@ namespace HuntHelper.Gui
             _configuration.ShowWorldName = _showWorldName;
             _configuration.SaveSpawnData = _saveSpawnData;
             _configuration.UseMapImages = _useMapImages;
+            _configuration.UseGameMapTexture = _useGameMapTexture;
             _configuration.MapWindowPos = _mapWindowPos;
             _configuration.CurrentWindowSize = _currentWindowSize;
             _configuration.MapImageOpacityAsPercentage = _mapImageOpacityAsPercentage;
@@ -1239,6 +1526,8 @@ namespace HuntHelper.Gui
             _configuration.PriorityMobColourBackground = _priorityMobColourBackground;
             _configuration.NearbyMobListColourBackground = _nearbyMobListColourBackground;
             _configuration.HuntWindowFlag = _huntWindowFlag;
+            _configuration.MapWindowClickThrough = _clickThrough;
+            _configuration.MapWindowClickThroughModifier = _clickThroughModifier;
             _configuration.MapWindowColour = _mapWindowColour;
             _configuration.MapWindowOpacityAsPercentage = _mapWindowOpacityAsPercentage;
             _configuration.TTSVoiceName = _ttsVoiceName;
@@ -1260,6 +1549,9 @@ namespace HuntHelper.Gui
             _configuration.FlyTextAEnabled = _flyTxtAEnabled;
             _configuration.FlyTextBEnabled = _flyTxtBEnabled;
             _configuration.FlyTextSEnabled = _flyTxtSEnabled;
+            _configuration.TataruPraiseAEnabled = _tataruPraiseAEnabled;
+            _configuration.TataruPraiseBEnabled = _tataruPraiseBEnabled;
+            _configuration.TataruPraiseSEnabled = _tataruPraiseSEnabled;
             _configuration.PointToARank = _pointToARank;
             _configuration.PointToBRank = _pointToBRank;
             _configuration.PointToSRank = _pointToSRank;
@@ -1283,6 +1575,7 @@ namespace HuntHelper.Gui
             _showWorldName = _configuration.ShowWorldName;
             _saveSpawnData = _configuration.SaveSpawnData;
             _useMapImages = _configuration.UseMapImages;
+            _useGameMapTexture = _configuration.UseGameMapTexture;
             _mapWindowPos = _configuration.MapWindowPos;
             _currentWindowSize = _configuration.CurrentWindowSize;
             _presetOneWindowSize = _configuration.PresetOne.WindowSize;
@@ -1321,6 +1614,8 @@ namespace HuntHelper.Gui
             _priorityMobColourBackground = _configuration.PriorityMobColourBackground;
             _nearbyMobListColourBackground = _configuration.NearbyMobListColourBackground;
             _huntWindowFlag = _configuration.HuntWindowFlag;
+            _clickThrough = _configuration.MapWindowClickThrough;
+            _clickThroughModifier = Math.Clamp(_configuration.MapWindowClickThroughModifier, 0, 3);
             _mapWindowColour = _configuration.MapWindowColour;
             _mapWindowOpacityAsPercentage = _configuration.MapWindowOpacityAsPercentage;
             _ttsVoiceVolume = _configuration.TTSVolume;
@@ -1341,6 +1636,9 @@ namespace HuntHelper.Gui
             _flyTxtAEnabled = _configuration.FlyTextAEnabled;
             _flyTxtBEnabled = _configuration.FlyTextBEnabled;
             _flyTxtSEnabled = _configuration.FlyTextSEnabled;
+            _tataruPraiseAEnabled = _configuration.TataruPraiseAEnabled;
+            _tataruPraiseBEnabled = _configuration.TataruPraiseBEnabled;
+            _tataruPraiseSEnabled = _configuration.TataruPraiseSEnabled;
             _pointToARank = _configuration.PointToARank;
             _pointToBRank = _configuration.PointToBRank;
             _pointToSRank = _configuration.PointToSRank;
@@ -1381,7 +1679,7 @@ namespace HuntHelper.Gui
         }
 
 
-        private unsafe void ClientState_TerritoryChanged(uint e)
+        private unsafe void ClientState_TerritoryChanged(ushort e)
         {
             _territoryName = MapHelpers.GetMapName(_clientState.TerritoryType);
             //_worldName = _clientState.LocalPlayer?.CurrentWorld?.GameData?.Name.ToString() ?? "Not Found";
@@ -1459,48 +1757,32 @@ namespace HuntHelper.Gui
 
         private void UpdateMobInfo()
         {
-            var nearbyMobs = new List<IBattleNpc>();
+            // 背景掃描開著時每幀都跑：附近沒有狩獵怪就不建清單。
+            List<IBattleNpc>? nearbyMobs = null;
             //sift through and add any hunt mobs to new list
             foreach (var obj in _objectTable)
             {
                 if (obj is not IBattleNpc mob) continue;
                 if (!_huntManager.IsHunt(mob.NameId)) continue;
-                nearbyMobs.Add(mob);
+                (nearbyMobs ??= new List<IBattleNpc>()).Add(mob);
                 _huntManager.AddToTrain(mob, _territoryId, MapHelpers.GetMapID(_territoryId), Instance, _territoryName, _mapZoneScale);
             }
 
-            if (nearbyMobs.Count == 0)
+            if (nearbyMobs == null)
             {
-                _huntManager.CurrentMobs.Clear();
+                // CurrentMobs 現在每次存取都重新解析、回傳新清單,對它 Clear() 不會影響追蹤名單。
+                _huntManager.ClearCurrentMobs();
                 return;
             }
 
             _huntManager.AddNearbyMobs(nearbyMobs, _mapZoneScale, _territoryId, MapHelpers.GetMapID(_territoryId),
                 _ttsAEnabled, _ttsBEnabled, _ttsSEnabled, _ttsAMessage, _ttsBMessage, _ttsSMessage,
                 _chatAEnabled, _chatBEnabled, _chatSEnabled, _chatAMessage, _chatBMessage, _chatSMessage,
-                _flyTxtAEnabled, _flyTxtBEnabled, _flyTxtSEnabled, Instance);
+                _flyTxtAEnabled, _flyTxtBEnabled, _flyTxtSEnabled, Instance,
+                _tataruPraiseAEnabled, _tataruPraiseBEnabled, _tataruPraiseSEnabled);
             UpdateStats();
 
 
-
-            #region NEW EXPANSION GATHING SPAWN POINTS STUFF 
-            if (Constants.NEW_EXPANSION)
-            {
-                if (_territoryId > Constants.NEW_EXPANSION_MIN_MAP_ID && _configuration.DawntrailSubmitPositionsData)
-                {
-                    foreach (var m in _huntManager.CurrentMobs)
-                    {
-                        var mob = m.Mob;
-                        if (_huntManager.GetHPP(mob) < 100) continue;
-
-                        SpawnDataGatherer.AddFoundMob(mob.NameId, _huntManager.GetMobNameInEnglish(mob.NameId),
-                        new Vector3(ConvertPosToCoordinate(mob.Position.X), ConvertPosToCoordinate(mob.Position.Z), ConvertPosToCoordinate(mob.Position.Y)),
-                        $"{m.Rank}", _territoryId,
-                        MapHelpers.GetMapNameInEnglish(_territoryId), _playerState.ContentId);
-                    }
-                }
-            }
-            #endregion
 
             if (!MapVisible) return;
 
@@ -1811,7 +2093,7 @@ namespace HuntHelper.Gui
                         ImGui.NewLine();
                         if (ImGui.Button($"{GuiResources.MapGuiText["ImageDownloadButton"]}##download"))
                         {
-                            _huntManager.DownloadImages(_mapDataManager.SpawnPointsList, _configuration);
+                            _ = _huntManager.DownloadImages(_mapDataManager.SpawnPointsList, _configuration);
                             _outOfDateImages = false;
                         }
                         ImGui.Text(GuiResources.MapGuiText["ImageDownloadManualMessageOne"]);
@@ -1850,10 +2132,18 @@ namespace HuntHelper.Gui
 
 
         private bool _outOfDateImages = false;
-        public async void CheckMapImageVer()
+        // 呼叫端不等待；例外在方法內收掉，回傳的 Task 不會失敗。
+        public async Task CheckMapImageVer()
         {
-            if (!await MapHelpers.MapImageVerUpToDate(_configuration.MapImagesVer))
-                _outOfDateImages = true;
+            try
+            {
+                if (!await MapHelpers.MapImageVerUpToDate(_configuration.MapImagesVer))
+                    _outOfDateImages = true;
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Warning(ex, "CheckMapImageVer failed");
+            }
         }
 
     }

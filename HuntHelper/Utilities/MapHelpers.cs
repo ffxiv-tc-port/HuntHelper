@@ -16,17 +16,21 @@ namespace HuntHelper.Utilities;
 /// </summary>
 public class MapHelpers
 {
-    private static Dictionary<string, string> ChineseToEnglish = new Dictionary<string, string>()
+    // 中文客戶端(國服簡中/台服繁中)的 sqpack 只有中文 EXD,拿不到英文地名;
+    // 用地名字典比對的話,台服 PlaceName 是繁中而必定 miss,
+    // 所以用 territoryId→英文名的語言無關對照(來源:Data/SpawnPointData.json 的 MapID/MapName,
+    // 與獵物地圖底圖檔名一致),簡中/繁中客戶端皆適用。
+    private static Dictionary<uint, string> TerritoryToEnglish = new Dictionary<uint, string>()
     {
-        {"中拉诺西亚","Middle La Noscea"},{"拉诺西亚低地","Lower La Noscea"},{"东拉诺西亚","Eastern La Noscea"},{"西拉诺西亚","Western La Noscea"},{"拉诺西亚高地","Upper La Noscea"},{"拉诺西亚外地","Outer La Noscea"},//La Noscea
-        {"黑衣森林中央林区","Central Shroud"},{"黑衣森林东部林区","East Shroud"},{"黑衣森林南部林区","South Shroud"},{"黑衣森林北部林区","North Shroud"},//Shroud
-        {"西萨纳兰","Western Thanalan"},{"中萨纳兰","Central Thanalan"},{"东萨纳兰","Eastern Thanalan"},{"南萨纳兰","Southern Thanalan"},{"北萨纳兰","Northern Thanalan"},//Thanalan
-        {"库尔札斯中央高地","Coerthas Central Highlands"},{"摩杜纳","Mor Dhona"},//2.0
-        {"阿巴拉提亚云海","The Sea of Clouds"},{"魔大陆阿济兹拉","Azys Lla"},{"龙堡参天高地","The Dravanian Forelands"},{"翻云雾海","The Churning Mists"},{"龙堡内陆低地","The Dravanian Hinterlands"},{"库尔札斯西部高地","Coerthas Western Highlands"},//3.0
-        {"基拉巴尼亚边区","The Fringes"},{"红玉海","The Ruby Sea"},{"基拉巴尼亚山区","The Peaks"},{"延夏","Yanxia"},{"基拉巴尼亚湖区","The Lochs"},{"太阳神草原","The Azim Steppe"},//4.0
-        {"雷克兰德","Lakeland"},{"珂露西亚岛","Kholusia"},{"安穆·艾兰","Amh Araeng"},{"伊尔美格","Il Mheg"},{"拉凯提卡大森林","The Rak'tika Greatwood"},{"黑风海","The Tempest"},//5.0
-        {"迷津","Labyrinthos"},{"萨维奈岛","Thavnair"},{"加雷马","Garlemald"},{"叹息海","Mare Lamentorum"},{"厄尔庇斯","Elpis"},{"天外天垓","Ultima Thule"},//6.0
-        {"奥阔帕恰山", "Urqopacha"}, {"克扎玛乌卡湿地", "Kozama'uka"}, {"亚克特尔树海", "Yak T'el"}, {"夏劳尼荒野", "Shaaloani"}, {"遗产之地", "Heritage Found"}, {"活着的记忆", "Living Memory"}//7.0
+        {134,"Middle La Noscea"},{135,"Lower La Noscea"},{137,"Eastern La Noscea"},{138,"Western La Noscea"},{139,"Upper La Noscea"},{180,"Outer La Noscea"},//La Noscea
+        {148,"Central Shroud"},{152,"East Shroud"},{153,"South Shroud"},{154,"North Shroud"},//Shroud
+        {140,"Western Thanalan"},{141,"Central Thanalan"},{145,"Eastern Thanalan"},{146,"Southern Thanalan"},{147,"Northern Thanalan"},//Thanalan
+        {155,"Coerthas Central Highlands"},{156,"Mor Dhona"},//2.0
+        {401,"The Sea of Clouds"},{402,"Azys Lla"},{398,"The Dravanian Forelands"},{400,"The Churning Mists"},{399,"The Dravanian Hinterlands"},{397,"Coerthas Western Highlands"},//3.0
+        {612,"The Fringes"},{613,"The Ruby Sea"},{620,"The Peaks"},{614,"Yanxia"},{621,"The Lochs"},{622,"The Azim Steppe"},//4.0
+        {813,"Lakeland"},{814,"Kholusia"},{815,"Amh Araeng"},{816,"Il Mheg"},{817,"The Rak'tika Greatwood"},{818,"The Tempest"},//5.0
+        {956,"Labyrinthos"},{957,"Thavnair"},{958,"Garlemald"},{959,"Mare Lamentorum"},{961,"Elpis"},{960,"Ultima Thule"},//6.0
+        {1187,"Urqopacha"},{1188,"Kozama'uka"},{1189,"Yak T'el"},{1190,"Shaaloani"},{1191,"Heritage Found"},{1192,"Living Memory"}//7.0
     };
 
     public static IDataManager DataManager;
@@ -50,19 +54,61 @@ public class MapHelpers
         /*DataManager.Excel.RemoveSheetFromCache<TerritoryType>();
        return DataManager.Excel.GetSheet<TerritoryType>(Language.English)?.GetRow(territoryID)?.PlaceName?.Value?.Name.ToString() ?? "location not found";        */
 
-        var row = DataManager.Excel.GetSheet<TerritoryType>(Language.English).GetRowOrDefault(territoryID)?.PlaceName.RowId ?? 0;
-        if (_clientState.ClientLanguage != (ClientLanguage)4)
+        // TC(台服)客戶端在 Dalamud 13.0.0.16 之後回報 ClientLanguage 7(TraditionalChinese),
+        // 舊版回報 4(ChineseSimplified)。用數值比較是為了相容列舉沒有 7 這個名字的舊版 Dalamud。
+        // 中文客戶端(4/5/7)一律走內建 territoryId 對照;
+        // 另外 TC fork 的 Lumina 會把指定語言的 Excel 請求靜默改成 client 語言,指定 Language.English 在台服拿到的其實是繁中。
+        if ((int)_clientState.ClientLanguage is 4 or 5 or 7)
         {
-            return DataManager.Excel.GetSheet<PlaceName>(Language.English).GetRowOrDefault(row)?.Name.ToString() ?? "location not found";
+            return TerritoryToEnglish.TryGetValue(territoryID, out var value) ? value : "location not found";
         }
 
-        var mapName = DataManager.Excel.GetSheet<PlaceName>().GetRowOrDefault(row)?.Name.ToString() ?? "location not found";
-        return ChineseToEnglish.TryGetValue(mapName, out var value) ? value : "location not found";
+        var row = DataManager.Excel.GetSheet<TerritoryType>(Language.English).GetRowOrDefault(territoryID)?.PlaceName.RowId ?? 0;
+        return DataManager.Excel.GetSheet<PlaceName>(Language.English).GetRowOrDefault(row)?.Name.ToString() ?? "location not found";
     }
 
     public static uint GetMapID(uint territoryID) //createmaplink doesn't work with "Mor Dhona" :(
     {
         return DataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(territoryID)?.Map.RowId ?? 0;
+    }
+
+    /// <summary>
+    /// 取得該區域「遊戲內建地圖材質」在 sqpack 裡的路徑,取不到時回傳 null。
+    /// </summary>
+    /// <remarks>
+    /// 格式是 <c>ui/map/{Map.Id}/{Map.Id 去掉斜線}_m.tex</c>,例如 s1f1/00 → ui/map/s1f1/00/s1f100_m.tex。
+    /// <b>ui/map 底下沒有任何語言子資料夾</b> —— 與 ui/icon 的 <c>tc</c> 子資料夾不同,所以不會踩到「指定語言取圖靜默失敗」那個坑,直接用單一路徑即可。
+    /// 台服沒有 <c>_hr1</c> 也沒有 <c>_s</c> 變體;遮罩是另一顆 <c>{base}m_m.tex</c>,本外掛不需要。
+    /// 座標對齊:Map.SizeFactor 與 HuntManager.GetMapZoneScale 的假設在獵物區域上一致(HW 六區 95、其餘 100),
+    /// 而遊戲材質正好覆蓋 1..MapScaleToMaxCoord(scale) 的完整座標範圍,直接拉滿視窗即與標點/玩家圖示對齊。
+    /// </remarks>
+    public static string? GetGameMapTexturePath(uint territoryID)
+    {
+        // 地圖視窗關著也每幀來問（底圖要保持載入）。路徑只由區域決定、遊戲資料表載入後不變，同一區直接回上次的結果。
+        var last = _lastTexturePath;
+        if (last != null && last.TerritoryId == territoryID) return last.Path;
+
+        var path = ResolveGameMapTexturePath(territoryID);
+        _lastTexturePath = new TexturePathEntry(territoryID, path);
+        return path;
+    }
+
+    private sealed record TexturePathEntry(uint TerritoryId, string? Path);
+
+    private static TexturePathEntry? _lastTexturePath;
+
+    private static string? ResolveGameMapTexturePath(uint territoryID)
+    {
+        var territory = DataManager.Excel.GetSheet<TerritoryType>().GetRowOrDefault(territoryID);
+        if (territory == null) return null;
+
+        var map = territory.Value.Map.ValueNullable;
+        if (map == null) return null;
+
+        var mapId = map.Value.Id.ExtractText();
+        if (string.IsNullOrWhiteSpace(mapId)) return null;
+
+        return $"ui/map/{mapId}/{mapId.Replace("/", string.Empty)}_m.tex";
     }
 
     //convert map scale (100/95) to map size (41/43.1)
@@ -94,7 +140,7 @@ public class MapHelpers
             client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
 
             var ver = await client.GetStringAsync(ImageVerUrl);
-            PluginLog.Warning($"map images latest ver: {ver} Local ver: {currentVersion}");
+            PluginLog.Information($"map images latest ver: {ver} Local ver: {currentVersion}");
             return currentVersion == ver;
         }
         catch (Exception ex)

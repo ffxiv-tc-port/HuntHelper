@@ -1,54 +1,38 @@
-# HuntHelper  [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/HuntHelper)](https://github.com/imaginary-png/HuntHelper)
+# HuntHelper
 
-Hunt radar / map. A-Train recording. S Rank Utilities.  
+[HuntHelper](https://github.com/img02/HuntHelper) 的台服移植版，狩獵雷達地圖、狩獵列車記錄與 S 階級輔助工具。
 
-A Dalamud plugin for Hunting
+## 功能
 
-<details>
-    <summary>Video</summary>
-  
-https://user-images.githubusercontent.com/70348218/184215756-fd223aad-ec4d-44cc-a02b-8b4eda07425e.mov
+- **狩獵雷達地圖**：顯示周圍狩獵目標位置
+- **發現通知**：依 A／B／S 階級分別設定聊天訊息與語音（TTS）播報；也可請 TataruPraise（塔塔露誇獎）念一句提醒（同一隻怪十分鐘只念一次，需另外安裝該插件）
+- **狩獵列車記錄**：記錄狩獵列車路線與已巡過的重生點，可匯出／匯入分享
+- **重生點記錄**：記錄狩獵目標的重生座標
+- **S 階級輔助計數器**：依所在地圖切換對應的 S 階級觸發計數規則
+- **指令**：`/hh`（開啟主地圖視窗）、`/hh1`／`/hh2`（以預設大小位置開啟地圖）、`/hh1save`／`/hh2save`（將目前視窗大小位置存為預設）、`/hht`（狩獵列車視窗）、`/hhr`（重生點記錄視窗）、`/hhc`（計數器視窗）、`/hhn`（取得列車下一隻目標座標旗標，可設定自動傳送）、`/hhna`（改用最近乙太之光的座標旗標，會覆蓋並停用 `/hhn` 的自動傳送）
 
-</details>
-<details>
-    <summary>Images</summary>
-  
-Record hunt trains and save taken spawn positions.  
-![record spawn points and hunt trains](https://user-images.githubusercontent.com/70348218/187097275-8daee2fc-e5a3-4e22-88ad-58c988445d5e.png)
+## IPC
 
-![take_spawn_points](https://user-images.githubusercontent.com/70348218/184554115-6f7d0c28-ed9c-4f3b-b35b-8b2c9405d9ea.png)
+- `HH.GetTrainList`：取得狩獵列車記錄的目標清單
+- `HH.ImportTrainList`：匯入狩獵列車目標清單
+- `HH.GetVersion`：取得 IPC 介面版本號
+- `HH.Enable` / `HH.Disable`：HuntHelper 啟用/停用時的發布訂閱通知
+- `HH.channel.MarkSeen`：列車上的目標被看到時的發布訂閱通知
 
-Counters for Spawning S Ranks  
-![counters](https://user-images.githubusercontent.com/70348218/184554212-904efe4e-d3bf-4411-808a-57235d810996.png)
+## 台服版的修改
 
-See all the hunts around you  
-![udumUntitled](https://user-images.githubusercontent.com/70348218/184554139-8ad1f75f-5800-4d33-9dd1-6396e9823675.png)
+- 新增發現魔物時請 TataruPraise 出聲提醒（A／B／S 分級各自開關，預設只開 S 階級）。
+- 修正台服 S 階級觸發計數器用錯語言字串表，補上繁中對照。
+- 不再跨幀持有遊戲物件，改存識別碼每次重查。
+- 多處降低記憶體用量。
+- 介面繁體中文化（台服客戶端預設載入繁中語言檔）。
 
-Customise the UI  
-![customisation](https://user-images.githubusercontent.com/70348218/184554412-edbfe473-9753-4314-8f35-cfa3d867d93f.png)
+## 需要搭配的插件
 
-</details>
+- 選用：TataruPraise（語音提醒）
 
-## IPC Usage 
-Implemented by [im-scared](https://github.com/im-scared)
+## 授權
 
-* `HH.GetTrainList` - returns the mob list from the train recorder.
-* `HH.GetVersion` - returns a version number for the Hunt Helper IPC system. This allows other plugins to check the version of Hunt Helper's IPC functions, so they can avoid errors by not even calling the other IPC functions if the version isn't what they expect. This version only needs to updated with breaking changes.
-* `HH.Enable` - this is a pub/sub signal that other plugins can subscribe to in order to know when Hunt Helper is enabled, ensuring other plugins don't waste time repeatedly calling IPC functions when Hunt Helper isn't around.
-* `HH.Disable` - another pub/sub signal that other plugins can subscribe to, this time to know when Hunt Helper is being disabled. This allows other plugins to gracefully disable their Hunt Helper integration when Hunt Helper is turned off.
+依照原專案授權條款發布，詳見 [LICENSE](LICENSE)。
 
-
-## Commands
-
-/hh -> Opens main map window  
-/hht -> Hunt train window  
-/hhr -> Spawn position recording window  
-/hhc -> Counter window
-
-/hh1  
-/hh2 -> Opens the map with preset size and position  
-/hh1save  
-/hh2save -> save the current window size and position to the preset number  
-
-/hhn -> Gets the next mob in the train as a \<flag\> - Initiates teleport if enabled  
-/hhna -> Gets the \<flag\> for the nearest Aetheryte to the next mob - Initiates teleport if enabled (overrides and disables /hhn teleport)   
+原作者：[img02](https://github.com/img02/HuntHelper)

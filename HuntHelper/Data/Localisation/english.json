@@ -10,14 +10,31 @@
 		"/hhna helpmessage": "Sends the flag for the next train mob's nearest Aetheryte into chat",
 		"/hhc helpmessage": "Counter window -- for counter-based S ranks",
 		"/hhr helpmessage": "Spawn point tracking window",
-		"dono": "If you've found this plugin useful and want to show some support."
+		"dono": "If you've found this plugin useful and want to show some support.",
+		"NewExpansionPromptTitle": "new expansion, who dis?",
+		"NewExpansionPromptMessage": "submit found spawn points to help make **INSERT EXPANSION NAME HERE** hunt map images?\n(this is from hunthelper btw)",
+		"NewExpansionPromptYesButton": "yes, never show me this again",
+		"NewExpansionPromptNoButton": "no :(, never show me this again",
+		"NewExpansionPromptInfo": "You can opt in / out from the settings on the main map ui."
 	},
 	"Map": {
 		"ErrorLoadingDataMessage": "Error loading data",
 
 		"MapImageCheckbox": "Map Image",
 		"MapImageCheckboxToolTip": "Use a map image instead of blank background\n\n\t\t=======================================\n\t\tMap Images Created By Cable Monkey of Goblin\n         \t\t   http://cablemonkey.us/huntmap2/\n         \t\t   Same thing for spawn point data :D\n\t\t=======================================\n\nIf map images aren't showing, please verify that you have the images downloaded in your plugins folder.",
+		"UseGameMapTextureCheckbox": "Use In-Game Map",
+		"UseGameMapTextureCheckboxToolTip": "Draw the game's own map texture as the background instead of the downloaded \"The Hunt\" images.\n\nNo ~25MB download, works offline, and never disappears when the plugin updates.\nIt also lines up exactly with the spawn point and player markers.\n\nTurn this off to go back to the downloaded map images by Cable Monkey of Goblin.",
+		"MapImageGameTextureMissing": "Could not load the in-game map texture ({0}) - see /xllog for details.",
+		"MapImageDownloadedMissingFellBack": "Downloaded map image '{0}' is missing - using the in-game map instead.",
+		"MapImageAllSourcesFailed": "No map background available: '{0}' is missing and this zone has no in-game map texture.",
+		"MapImageOpacityIsZero": "Map background is loaded but Map Opacity is 0 - raise it in the options panel.",
+		"MapImageGameTextureLoading": "Loading the in-game map texture ({0})...",
+		"MapImageGameTextureNone": "This zone has no in-game map.",
 		"TitleBarCheckbox": "Hide Title Bar",
+		"ClickThroughCheckbox": "Click Through",
+		"ClickThroughCheckboxToolTip": "Let mouse clicks on the map background pass through to the game instead of being eaten by the hunt map window.\n\nThe cog button, the title bar and the bottom-right resize grip still take clicks;\nhold the modifier key selected below to temporarily take back full control (move / resize).",
+		"ClickThroughModifierNone": "None",
+		"ClickThroughModifierToolTip": "Hold this key while click-through is on to make the whole window take mouse input again (to move or resize it).\nWith \"None\" selected you can only use the title bar or the bottom-right resize grip.",
 		"BackgroundScanCheckbox": "Background Scan",
 		"BackgroundScanCheckboxToolTip": "Allows Hunt Helper to scan while GUI inactive.\nEnables notifications, recording Train, etc. while this main map window is inactive.",
 		"LoadedHuntDataButton": "Loaded Hunt Data",
@@ -121,7 +138,26 @@
 		"ImageDownloadManualMessageOne": "Or you can view and manually download from:",
 		"ImageDownloadManualMessageTwo": "and place in:",
 		"ImagesMissingPromptMessage": "Some map images are missing (maybe a new expansion has released?).\n\nRedownload images.",
-		"OutOfDateMaps": "Map images have been updated."
+		"OutOfDateMaps": "Map images have been updated.",
+		"MainWindowTitle": "Hunt Helper",
+		"FallbackWindowTitle": "help, i've fallen over",
+		"SpawnPointFilterButton": "Spawn Point Filter",
+		"SpawnPointFilterToolTip": "Select which Rank to display Spawn Points for",
+		"HighContrastButton": "Use High-Contrast Colour",
+		"HighContrastToolTip": "Use a high-contrast colour for Spawn Points,\n\nCan be changed from Visuals > Colours",
+		"SubmitPositionsPrompt": "submit found hunt position data?",
+		"OptInCheckbox": "opt in",
+		"PathColourLabel": "Path Colour",
+		"PathColourToolTip": "Set Alpha (A) to zero to disable.",
+		"FlyText": "FlyText",
+		"NearbyMobListCheckbox": "Nearby Mob List",
+		"LanguageTab": "Language",
+		"OKButton": "OK",
+		"TranslateTab": "Translate",
+		"TranslateTabMessage": "If you want to help translate this plugin",
+		"ClickMeLabel": " -- click me",
+		"TranslateTabContact": "or dm me @ img#7855",
+		"DawntrailTab": "Dawntrail"
 	},
 
 	"HuntTrain": {
@@ -178,7 +214,10 @@
 		"ImportNewCheckbox": "Import New ",
 		"ImportNewCheckboxToolTip": "Only imports new mobs",
 		"UpdateLastSeenCheckbox": "Update Last Seen Time ",
-		"UpdateLastSeenCheckboxToolTip": "Imports new mobs and updates old mobs Last Seen times, if applicable"
+		"UpdateLastSeenCheckboxToolTip": "Imports new mobs and updates old mobs Last Seen times, if applicable",
+		"ShowMapName": "Show Map Name",
+		"CosmeticTreeNode": "cosmetic",
+		"IPCTreeNode": "IPCRelatedStuffIdk"
 	},
 	
 	"SpawnPointFinder": {
@@ -213,7 +252,13 @@
 		"BackgroundToggleToolTipEnabled":"Enabled",
 		"BackgroundToggleToolTipDisabled":"Disabled",
 		"Reset":"Reset",
-		"WeeEa":"Wee Ea: "
+		"WeeEa":"Wee Ea: ",
+		"FateMayFinishEarlierToolTip": "May finish earlier based on the last failed fate before you entered the zone",
+		"FateCountdownLabel": "Countdown: ",
+		"FateResetButton": "reset",
+		"FateOpenMapToolTip": "Click a Fate to see it on the map.",
+		"FateUpcomingMessage": "upcoming or requires activation - can fail if not activated in time",
+		"FatesHeader": "Fates"
 	}
 	
 }

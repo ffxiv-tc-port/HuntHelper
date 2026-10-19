@@ -50,7 +50,7 @@ namespace HuntHelper.Gui
 
             ImGui.SetNextWindowSize(new Vector2(375, 330), ImGuiCond.FirstUseEver);
             ImGui.SetNextWindowSizeConstraints(new Vector2(375, 330), new Vector2(float.MaxValue, float.MaxValue));
-            if (ImGui.Begin("Debug stuff", ref RandomDebugWindowVisisble))
+            if (ImGui.Begin("除錯資訊", ref RandomDebugWindowVisisble))
             {
 
                 LocalObjects();
@@ -70,16 +70,16 @@ namespace HuntHelper.Gui
             ImGui.Text($"pos: X: ({ConvertPosToCoordinate(v3.X)}, Y: {ConvertPosToCoordinate(v3.X)})\n");
             ImGui.NewLine();
 
-            if (ImGui.CollapsingHeader("nearby hunts & object table debug"))
+            if (ImGui.CollapsingHeader("附近狩獵目標與物件表除錯"))
             {
                 ImGui.BeginGroup();
                 var nearby = _huntManager.GetCurrentMobs();
-                ImGui.Text("Nearby Mobs");
+                ImGui.Text("附近的魔物");
                 nearby.ForEach(m => ImGui.TextUnformatted($"{m.Name} - {m.NameId}"));
                 ImGui.Text("============");
 
                 var (rank, mob) = _huntManager.GetPriorityMob();
-                ImGui.Text("priority:");
+                ImGui.Text("優先目標:");
                 ImGui.TextUnformatted($"{rank} - {mob?.Name}");
                 ImGui.Text("============");
                 ImGui.Text("");
@@ -89,7 +89,7 @@ namespace HuntHelper.Gui
                 {
                     if (obj is not IBattleNpc bobj) continue;
                     if (bobj.MaxHp < 10000) continue; //not really needed if subkind is enemy, once matching to id / name
-                    if (bobj.BattleNpcKind != BattleNpcSubKind.Combatant) continue; //not really needed if matching to 'nameID'
+                    if (bobj.BattleNpcKind != BattleNpcSubKind.Enemy) continue; //not really needed if matching to 'nameID'
 
 
                     hunt += $"{obj.Name} \n" +
@@ -102,7 +102,7 @@ namespace HuntHelper.Gui
                             $"Y: {ConvertPosToCoordinate(obj.Position.Y)}\n" +
                             $"  --------------  \n";
                 }
-                ImGui.Text($"Found: {hunt}");
+                ImGui.Text($"找到: {hunt}");
                 ImGui.NewLine();
                 ImGui.EndGroup();
             }
@@ -110,10 +110,10 @@ namespace HuntHelper.Gui
         }
         private void PositionalInfo()
         {
-            if (ImGui.CollapsingHeader("positional debug"))
+            if (ImGui.CollapsingHeader("座標除錯"))
             {
                 ImGui.BeginGroup();
-                ImGui.TextUnformatted("Random Debug Info?!:");
+                ImGui.TextUnformatted("隨機除錯資訊？！:");
                 ImGui.Columns(2);
 
                 ImGui.TextUnformatted($"Content1 Region: {ImGui.GetContentRegionAvail()}");
@@ -140,7 +140,7 @@ namespace HuntHelper.Gui
                     ImGuiUtil.ImGui_RightAlignText($"Coord size: {_mapZoneScale} ");
 
                     //priority mob stuff
-                    ImGuiUtil.ImGui_RightAlignText("Priority Mob:");
+                    ImGuiUtil.ImGui_RightAlignText("優先目標:");
                     var priorityMob = _huntManager.GetPriorityMob().Mob;
                     if (priorityMob != null)
                     {
@@ -153,7 +153,7 @@ namespace HuntHelper.Gui
 
                     var currentMobs = _huntManager.GetAllCurrentMobsWithRank();
                     ImGuiUtil.ImGui_RightAlignText("--");
-                    ImGuiUtil.ImGui_RightAlignText("Other nearby mobs:");
+                    ImGuiUtil.ImGui_RightAlignText("附近的其他魔物:");
                     foreach (var (rank, mob) in currentMobs)
                     {
                         ImGuiUtil.ImGui_RightAlignText("--");
@@ -165,7 +165,7 @@ namespace HuntHelper.Gui
                 }
                 else
                 {
-                    ImGui.Text("Can't find local player");
+                    ImGui.Text("找不到本地玩家");
                 }
                 ImGui.Columns(1);
                 ImGui.NewLine();
@@ -179,7 +179,7 @@ namespace HuntHelper.Gui
         private unsafe void Aetherytes()
         {
             var tele = Telepo.Instance();
-            if (ImGui.CollapsingHeader("aetherytes"))
+            if (ImGui.CollapsingHeader("乙太之光"))
             {
                 ImGui.BeginGroup();
                 foreach (var a in _aeth)
@@ -189,7 +189,7 @@ namespace HuntHelper.Gui
                     ImGui.Text($"{pn?.Name,26} | {"aetheryteid:",6}{a.AetheryteId,4} | {"subIndex:",6}{a.SubIndex,4} | {"territory:",6}{a.TerritoryId,4}");
                     ImGui.PopFont();
 
-                    if (ImGui.Button($"clickme##{a.AetheryteId}"))
+                    if (ImGui.Button($"點擊複製##{a.AetheryteId}"))
                     {
                         ImGui.SetClipboardText($"new AetheryteData() {{ AetheryteID = {a.AetheryteId}, SubIndex = {a.SubIndex}, TerritoryID = {a.TerritoryId}, Position = new Vector2()}}, //{pn?.Name}");
                     }

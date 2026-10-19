@@ -9,6 +9,8 @@ namespace HuntHelper
 
         public static void Log(string message, params object[] args) { Logger.Info(message, args); }
         public static void Log(Exception? exception, string messageTemplate, params object[] values) { Logger.Info(messageTemplate, values); }
+        // Log() 的別名。呼叫端寫 Information 才看得出是「要使用者回報的診斷」等級。
+        public static void Information(string message, params object[] args) { Logger.Info(message, args); }
         public static void Error(string message, params object[] args) { Logger.Error(message, args); }
         public static void Error(Exception? exception, string messageTemplate, params object[] values) { Logger.Error(exception, messageTemplate, values); }
         public static void Warning(string message, params object[] args) { Logger.Warning(message, args); }

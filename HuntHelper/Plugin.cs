@@ -8,7 +8,6 @@ using HuntHelper.Gui.Resource;
 using HuntHelper.Managers;
 using HuntHelper.Managers.Hunts;
 using HuntHelper.Managers.MapData;
-using HuntHelper.Managers.NewExpansion;
 using HuntHelper.Utilities;
 using System;
 using System.IO;
@@ -47,7 +46,6 @@ namespace HuntHelper
         public static ICallGateSubscriber<uint, byte, bool> TeleportIpc { get; private set; }
         public static string PluginDir { get; set; } = string.Empty;
 
-        private SubmitDataPrompt SubmitDataPrompt { get; set; }
         private DebugUI DebugUI { get; set; }
 
 
@@ -56,8 +54,8 @@ namespace HuntHelper
             IFramework framework,
             ICommandManager commandManager,
             IClientState clientState,
-            IPlayerState playerState,
             IObjectTable objectTable,
+            IPlayerState playerState,
             IDataManager dataManager,
             IChatGui chatGui,
             IFlyTextGui flyTextGui,
@@ -85,15 +83,14 @@ namespace HuntHelper
             Configuration.Initialize(pluginInterface);
 
             TrainManager = new TrainManager(chatGui, gameGui, Path.Combine(pluginInterface.AssemblyLocation.Directory?.FullName!, @"Data\HuntTrain.json"));
-            HuntManager = new HuntManager(pluginInterface, TrainManager, chatGui, flyTextGui, Configuration.TTSVolume);
+            HuntManager = new HuntManager(pluginInterface, TrainManager, chatGui, flyTextGui, objectTable, Configuration.TTSVolume);
             MapDataManager = new MapDataManager(Path.Combine(pluginInterface.AssemblyLocation.Directory?.FullName!, @"Data\SpawnPointData.json"));
 
-            MapUi = new MapUI(this.Configuration, clientState, playerState, objectTable, HuntManager, MapDataManager, gameGui);
+            MapUi = new MapUI(this.Configuration, clientState, objectTable, playerState, HuntManager, MapDataManager, gameGui);
             HuntTrainUI = new HuntTrainUI(TrainManager, Configuration);
             CounterUI = new CounterUI(clientState, chatGui, gameGui, Configuration, objectTable, fateTable);
             SpawnPointFinderUI = new SpawnPointFinderUI(MapDataManager, Configuration);
             PointerUI = new PointerUI(HuntManager, Configuration, gameGui);
-            SubmitDataPrompt = new SubmitDataPrompt(Configuration);
 #if DEBUG
             DebugUI = new DebugUI(aeth, dataManager, clientState, HuntManager, objectTable);
 #endif
@@ -156,7 +153,7 @@ namespace HuntHelper
             Configuration.MapWindowVisible = MapUi.MapVisible;
 
             //todo idk delete this or comment out after dawntrail maps done
-            if (MapUi.MapVisible) MapUi.CheckMapImageVer();
+            if (MapUi.MapVisible) _ = MapUi.CheckMapImageVer();
         }
         private void HuntMapCommandGetRidOfValidationMsg()
         {
@@ -187,9 +184,6 @@ namespace HuntHelper
 #if DEBUG
                 DebugUI.Draw();
 #endif
-
-                //uhh keeping this around for future expansions
-                if (Constants.NEW_EXPANSION) SubmitDataPrompt.Draw();
             }
             catch (Exception e)
             {

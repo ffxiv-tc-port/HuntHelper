@@ -1,5 +1,4 @@
 ﻿using Dalamud.Bindings.ImGui;
-using Dalamud.Game.Chat;
 using Dalamud.Game.Text;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
@@ -146,7 +145,7 @@ public unsafe partial class CounterUI : IDisposable
 
     private void DrawWeeEaCounter()
     {
-        var count = _objectTable.Count(obj => obj.DataId == Constants.WeeEa);
+        var count = _objectTable.Count(obj => obj.BaseId == Constants.WeeEa);
 
         if (ImGui.BeginTable("CounterTable", 2, ImGuiTableFlags.Borders))
         {
@@ -163,18 +162,15 @@ public unsafe partial class CounterUI : IDisposable
     }
 
     #endregion
-    private void ChatGui_ChatMessage(IHandleableChatMessage message)
+    private void ChatGui_ChatMessage(XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
     {
-        var type = message.LogKind;
+        if (!_countInBackground && !WindowVisible) return;
 
-        if (!_countInBackground && !WindowVisible) return;       
-
-        //PluginLog.Warning($"?? line: " + message.Message + $" {type}");
-        //SystemError = you killed and chocobo killed, SystemMessage = discard, Gathering = gather attempt, Action = Squonk uses Chirp
-        if (type is not XivChatType.SystemError and not XivChatType.SystemMessage and not XivChatType.Gathering and not XivChatType.Action) return; 
+        //PluginLog.Warning($"?? line: " + message + $" {type}");
+        if ((ushort)type is not 2874 and not 2115 and not 17210 and not 57 and not 10283) return; //2874 = you killed, 2115 = gather attempt, 17210 = chocobo killed owo, 10283 = Squonk uses Chirp
         var counter = _counters.FirstOrDefault(c => c.MapID == _clientState.TerritoryType);
         if (counter == null) return;
-        counter.TryAddFromLogLine(message.OriginalMessage.ToString());
+        counter.TryAddFromLogLine(message.ToString());
     }
 
     private void DrawBackgroundToggleButton()

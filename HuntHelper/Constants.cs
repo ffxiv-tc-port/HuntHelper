@@ -4,8 +4,6 @@ namespace HuntHelper;
 
 public static class Constants
 {
-    public static bool NEW_EXPANSION = false;
-    public static ushort NEW_EXPANSION_MIN_MAP_ID = 961; //just set this as highest mapid for prev expansion - 1192 - Living Memory - Dawntrail
 
     public const string BaseImageUrl = "https://raw.githubusercontent.com/img02/HuntHelper-Resources/main/Images/Maps/";
 #if DEBUG
@@ -116,7 +114,7 @@ public static class Constants
     private static readonly string[] Okina_fr = { "yumemi nu", "Yumemi" };
     private static readonly string[] Udumbara_fr = { "liéchi", "Diakka" };
     private static readonly string[] SaltAndLight_fr = { "jetez" }; //shb
-    private static readonly string[] ForgivenPedantry_fr = { "Fleur de coton nain" };
+    private static readonly string[] ForgivenPedantry_fr = { "coton nain" };
     private static readonly string[] Ixtab_fr = { "poupée ronka fissurée", "épine ronka fissurée", "réceptacle ronka fissuré" };//lol//ew
     private static readonly string[] Sphatika_fr = { "Asvattha", "pishacha", "Vajralangula" };
     private static readonly string[] Ruinator_fr = { "penseur", "vagabond", "lamenteur" };
@@ -128,7 +126,7 @@ public static class Constants
     private const string OkinaRegex_fr = $"{BattleRegexBase_fr}(yumemi nu|Yumemi).";
     private const string UdumbaraRegex_fr = $"{BattleRegexBase_fr}(liéchi|Diakka).";
     private const string SaltAndLightRegex_fr = $"Vous jetez.*"; //Vous jetez un  morceau de minerai d'aurum regis
-    private const string ForgivenPedantryRegex_fr = $"{GatheringRegexBase_fr}Fleur de coton nain";
+    private const string ForgivenPedantryRegex_fr = $"{GatheringRegexBase_fr}(Fleur|fleurs) de coton nain";
     private const string IxtabRegex_fr = $"{BattleRegexBase_fr}(poupée ronka fissurée|épine ronka fissurée|réceptacle ronka fissuré).";
     private const string SphatikaRegex_fr = $"{BattleRegexBase_fr}(Asvattha|pishacha|Vajralangula).";
     private const string RuinatorRegex_fr = $"{BattleRegexBase_fr}(penseur|vagabond|lamenteur).";
@@ -163,6 +161,35 @@ public static class Constants
     private const string RuinatorRegex_chs = $"(思考之物|彷徨之物|叹息之物){BattleRegexBase_chs}";
     private const string BattleRegexBase_chs = "打倒了";
     private const string GatheringRegexBase_chs = "获得了.*";
+    #endregion
+
+    #region ChineseTraditional
+    //tc - 台服 (ClientLanguage.TraditionalChinese == 7)
+    private static readonly string[] Minhocao_tc = { "土元精" };
+    private static readonly string[] Squonk_tc = { "嘰嘰喳喳" };
+    private static readonly string[] Leucrotta_tc = { "亞拉戈奇美拉", "小海德拉", "美拉西迪亞薇薇爾飛龍" };
+    private static readonly string[] Gandawera_tc = { "皇金礦", "星極花" };
+    private static readonly string[] Okina_tc = { "無殼觀夢螺", "觀夢螺" }; //naked goes first here, same reason as _en
+    private static readonly string[] Udumbara_tc = { "萊西", "狄亞卡" };
+    private static readonly string[] SaltAndLight_tc = { "捨棄" };
+    private static readonly string[] ForgivenPedantry_tc = { "矮人棉" };
+    private static readonly string[] Ixtab_tc = { "破裂的隆卡人偶", "破裂的隆卡石蒺藜", "破裂的隆卡器皿" };
+    private static readonly string[] Sphatika_tc = { "阿輸陀花", "畢舍遮", "金剛尾" };
+    private static readonly string[] Ruinator_tc = { "思考之物", "彷徨之物", "嘆息之物" };
+
+    private const string MinhocaoRegex_tc = $"土元精{BattleRegexBase_tc}";
+    private const string SquonkRegex_tc = $"斯奎克發動了「嘰嘰喳喳」";
+    private const string LeucrottaRegex_tc = $"(亞拉戈奇美拉|小海德拉|美拉西迪亞薇薇爾飛龍){BattleRegexBase_tc}";
+    private const string GandaweraRegex_tc = $"{GatheringRegexBase_tc}(皇金礦|星極花)";
+    private const string OkinaRegex_tc = $"(無殼觀夢螺|觀夢螺){BattleRegexBase_tc}";
+    private const string UdumbaraRegex_tc = $"(萊西|狄亞卡){BattleRegexBase_tc}";
+    private const string SaltAndLightRegex_tc = $"捨棄了.*";
+    private const string ForgivenPedantryRegex_tc = $"{GatheringRegexBase_tc}矮人棉";
+    private const string IxtabRegex_tc = $"(破裂的隆卡人偶|破裂的隆卡石蒺藜|破裂的隆卡器皿){BattleRegexBase_tc}";
+    private const string SphatikaRegex_tc = $"(阿輸陀花|畢舍遮|金剛尾){BattleRegexBase_tc}";
+    private const string RuinatorRegex_tc = $"(思考之物|彷徨之物|嘆息之物){BattleRegexBase_tc}";
+    private const string BattleRegexBase_tc = "打倒了"; //LogMessage#557: <A>將<B>打倒了。
+    private const string GatheringRegexBase_tc = "獲得了.*"; //LogMessage#1049: 獲得了「<item>」。
     #endregion
 
     //ss ids
@@ -279,6 +306,35 @@ public static class Constants
             IxtabRegex = IxtabRegex_ja;
             SphatikaRegex = SphatikaRegex_ja;
             RuinatorRegex = RuinatorRegex_ja;
+        }
+
+        // 台服 (TC) 回報 ClientLanguage 7,CHT 是 5;沒有這條就會落到下面的 _chs 表,永遠比對不到。
+        // (GuiResources.LoadGuiText 另外把 4 也當台服,這裡刻意讓 4 維持走 _chs fallback)
+        else if (lang is ClientLanguage.TraditionalChinese or ClientLanguage.ChineseTraditional)
+        {
+            Minhocao = Minhocao_tc;
+            Squonk = Squonk_tc;
+            Leucrotta = Leucrotta_tc;
+            Gandawera = Gandawera_tc;
+            Okina = Okina_tc;
+            Udumbara = Udumbara_tc;
+            SaltAndLight = SaltAndLight_tc;
+            ForgivenPedantry = ForgivenPedantry_tc;
+            Ixtab = Ixtab_tc;
+            Sphatika = Sphatika_tc;
+            Ruinator = Ruinator_tc;
+
+            MinhocaoRegex = MinhocaoRegex_tc;
+            SquonkRegex = SquonkRegex_tc;
+            LeucrottaRegex = LeucrottaRegex_tc;
+            GandaweraRegex = GandaweraRegex_tc;
+            OkinaRegex = OkinaRegex_tc;
+            UdumbaraRegex = UdumbaraRegex_tc;
+            SaltAndLightRegex = SaltAndLightRegex_tc;
+            ForgivenPedantryRegex = ForgivenPedantryRegex_tc;
+            IxtabRegex = IxtabRegex_tc;
+            SphatikaRegex = SphatikaRegex_tc;
+            RuinatorRegex = RuinatorRegex_tc;
         }
 
         else //(lang == ClientLanguage.ChineseSimplified) // ChineseSimplified does not exist in global dalamud version

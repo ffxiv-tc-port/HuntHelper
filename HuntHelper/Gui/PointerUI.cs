@@ -24,17 +24,12 @@ public class PointerUI
     public void Draw()
     {
         if (!_config.EnableBackgroundScan && !_config.MapWindowVisible) return;
+        if (!_huntManager.HasCurrentMobs) return;
 
         var currentMobs = _huntManager.GetAllCurrentMobsWithRank();
         if (currentMobs.Count == 0) return;
-        try
-        {
-            currentMobs.ForEach((item) =>
-                PointToMobs(item.Rank, item.Mob));
-        }
-        catch (InvalidOperationException e)
-        {
-        }
+        currentMobs.ForEach((item) =>
+            PointToMobs(item.Rank, item.Mob));
     }
 
     private uint GetPointerColour(HuntRank rank)

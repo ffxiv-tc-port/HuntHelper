@@ -10,14 +10,31 @@
 		"/hhna helpmessage": "发送狩猎车的下一站最近传送水晶至聊天",
 		"/hhc helpmessage": "计数器窗口 -- 面相农怪触发的S",
 		"/hhr helpmessage": "刷新点追踪窗口",
-		"dono": "如果你认为本插件有用并想提供支持"
+		"dono": "如果你认为本插件有用并想提供支持",
+		"NewExpansionPromptTitle": "新资料片，你哪位？",
+		"NewExpansionPromptMessage": "是否提交找到的刷新点，协助制作 **INSERT EXPANSION NAME HERE** 的狩猎地图图片？\n（这是 HuntHelper 的提示哦）",
+		"NewExpansionPromptYesButton": "是，不要再显示这个消息",
+		"NewExpansionPromptNoButton": "否 :(，不要再显示这个消息",
+		"NewExpansionPromptInfo": "你可以在主地图界面的设置中选择加入或退出。"
 	},
 	"Map": {
 		"ErrorLoadingDataMessage": "加载数据错误",
 
 		"MapImageCheckbox": "地图图片",
 		"MapImageCheckboxToolTip": "使用地图图片替代空白背景 - 地图图片由 \n Cable Monkey of Goblin创建",
+		"UseGameMapTextureCheckbox": "使用游戏内置地图",
+		"UseGameMapTextureCheckboxToolTip": "改用游戏本身的地图材质当底图，取代下载回来的“The Hunt”标注图。\n\n不必下载约 25MB、离线也能用，而且不会因为插件更新换文件夹就消失。\n另外它正好覆盖完整地图坐标范围，与刷新点、玩家图标完全对齐。\n\n取消勾选则改回 Cable Monkey of Goblin 制作的下载版地图图片。",
+		"MapImageGameTextureMissing": "无法加载游戏内置地图材质（{0}），详情请看 /xllog。",
+		"MapImageDownloadedMissingFellBack": "找不到下载的地图图片“{0}”，已改用游戏内置地图。",
+		"MapImageAllSourcesFailed": "没有可用的地图底图：找不到“{0}”，这个区域也没有游戏内置地图材质。",
+		"MapImageOpacityIsZero": "底图已加载，但“地图不透明度”是 0，请在选项面板把它调高。",
+		"MapImageGameTextureLoading": "正在加载游戏内置地图材质（{0}）……",
+		"MapImageGameTextureNone": "这个区域没有游戏内置地图。",
 		"TitleBarCheckbox": "隐藏标题栏",
+		"ClickThroughCheckbox": "点击穿透",
+		"ClickThroughCheckboxToolTip": "开启后，点在地图背景上的鼠标操作会直接穿透到游戏，不会被狩猎地图窗口吃掉。\n\n齿轮按钮、标题栏与右下角的缩放握把仍然可以正常点击；\n按住下方选定的修饰键，可暂时取回完整控制（移动、缩放窗口）。",
+		"ClickThroughModifierNone": "无",
+		"ClickThroughModifierToolTip": "穿透模式开启时按住这个键，可让整个窗口暂时恢复接收鼠标输入（用来移动或缩放窗口）。\n选“无”的话就只能用标题栏或右下角的缩放握把操作。",
 		"BackgroundScanCheckbox": "后台扫描",
 		"BackgroundScanCheckboxToolTip": "允许GUI在未开启时扫描。在地图窗口未开启时启用通知，狩猎车录制等等。",
 		"LoadedHuntDataButton": "加载狩猎数据",
@@ -121,7 +138,26 @@
 		"ImageDownloadManualMessageOne": "或者你可以从这里查看或者手动下载:",
 		"ImageDownloadManualMessageTwo": "在:",
 		"ImagesMissingPromptMessage": "Some map images are missing (maybe a new expansion has released?).\n\nRedownload images.",
-		"OutOfDateMaps": "Map images have been updated."
+		"OutOfDateMaps": "Map images have been updated.",
+		"MainWindowTitle": "狩猎小帮手",
+		"FallbackWindowTitle": "救命啊，我摔倒了",
+		"SpawnPointFilterButton": "刷新点筛选",
+		"SpawnPointFilterToolTip": "选择要显示刷新点的级别",
+		"HighContrastButton": "使用高对比色",
+		"HighContrastToolTip": "为刷新点使用高对比色，\n\n可在可视化 > 颜色中更改",
+		"SubmitPositionsPrompt": "要提交找到的狩猎目标位置数据吗？",
+		"OptInCheckbox": "加入",
+		"PathColourLabel": "路径颜色",
+		"PathColourToolTip": "将透明度 (A) 设为零可禁用。",
+		"FlyText": "弹出文本",
+		"NearbyMobListCheckbox": "附近狩猎怪列表",
+		"LanguageTab": "语言",
+		"OKButton": "确定",
+		"TranslateTab": "翻译",
+		"TranslateTabMessage": "如果你想协助翻译这个插件",
+		"ClickMeLabel": " -- 点我",
+		"TranslateTabContact": "或私信我 @ img#7855",
+		"DawntrailTab": "金曦之遗辉"
 	},
 
 	"HuntTrain": {
@@ -178,7 +214,10 @@
 		"ImportNewCheckbox": "导入新增 ",
 		"ImportNewCheckboxToolTip": "只导入新怪",
 		"UpdateLastSeenCheckbox": "上传上次发现时间 ",
-		"UpdateLastSeenCheckboxToolTip": "导入新怪并上传上次发现的时间，如果可用的话。"
+		"UpdateLastSeenCheckboxToolTip": "导入新怪并上传上次发现的时间，如果可用的话。",
+		"ShowMapName": "显示地图名称",
+		"CosmeticTreeNode": "外观",
+		"IPCTreeNode": "IPC 相关"
 	},
 
 	"SpawnPointFinder": {
@@ -213,7 +252,13 @@
 		"BackgroundToggleToolTipEnabled": "启用",
 		"BackgroundToggleToolTipDisabled": "禁用",
 		"Reset": "重设",
-		"WeeEa": "小异亚: "
+		"WeeEa": "小异亚: ",
+		"FateMayFinishEarlierToolTip": "可能会依你进入该区域前最后一次失败的 FATE 提早结束",
+		"FateCountdownLabel": "倒数计时: ",
+		"FateResetButton": "重设",
+		"FateOpenMapToolTip": "点击 FATE 可在地图上查看。",
+		"FateUpcomingMessage": "即将出现或需要触发 - 若未及时触发可能会失败",
+		"FatesHeader": "FATE"
 	}
 	
 }

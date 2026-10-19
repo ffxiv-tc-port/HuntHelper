@@ -81,6 +81,11 @@ namespace HuntHelper
         public bool ShowWorldName { get; set; } = true;
         public bool SaveSpawnData { get; set; } = true;
         public bool UseMapImages { get; set; } = false;
+        // 底圖來源。true(預設)= 直接用遊戲 sqpack 裡的地圖材質 ui/map/{Map.Id}/{...}_m.tex:
+        // 不必下載 25MB、離線可用、不會因為外掛更新換版本資料夾而消失,而且材質正好覆蓋完整
+        // 地圖座標範圍(SizeFactor 與 GetMapZoneScale 在 47 個獵物區全部一致),與標點對齊。
+        // false = 沿用原本從 HuntHelper-Resources 下載的「The Hunt」標註圖。
+        public bool UseGameMapTexture { get; set; } = true;
         public bool EnableBackgroundScan { get; set; } = false;
         public bool ShowOptionsWindow { get; set; } = false;
         public bool DisplayA { get; set; } = true;
@@ -112,6 +117,15 @@ namespace HuntHelper
         public bool FlyTextBEnabled { get; set; } = false;
         public bool FlyTextSEnabled { get; set; } = true;
 
+        #endregion
+
+        #region 塔塔露誇獎（TataruPraise）語音通知
+        // 掛機時被「有聲音」叫回電腦前用的。純通知：不會動到既有的聊天／TTS／浮空文字輸出；對方沒安裝時整條路徑是 no-op。
+        // 分級沿用 HuntHelper 自己的 A/B/S，預設值也沿用既有 Chat/TTS/FlyText 三組的形狀（A=false、B=false、S=true）：
+        // S 階是「該把人叫回來」的那一種，A/B 在野外會一直遇到，預設開會變成噪音，要的人自己在通知分頁勾。
+        public bool TataruPraiseAEnabled { get; set; } = false;
+        public bool TataruPraiseBEnabled { get; set; } = false;
+        public bool TataruPraiseSEnabled { get; set; } = true;
         #endregion
 
         public bool PointToARank { get; set; } = false;
@@ -163,15 +177,17 @@ namespace HuntHelper
         //Hunt Window Flag - used for toggling title bar
         public int HuntWindowFlag { get; set; } = (int)(ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoTitleBar);
 
+        #region click-through
+        // 穿透模式:游標落在地圖「背景」上時整個視窗當幀不吃滑鼠輸入,點擊直接落到遊戲。
+        // 預設關閉 —— 開啟後視窗本體不能再用拖曳移動(只剩標題列、右下角縮放握把與修飾鍵),
+        // 對沒主動要求這個功能的人來說是意外行為,所以維持既有行為當預設值。
+        public bool MapWindowClickThrough { get; set; } = false;
+        // 穿透模式下暫時取回完整控制的修飾鍵:0=無 1=Shift 2=Ctrl 3=Alt
+        public int MapWindowClickThroughModifier { get; set; } = 1;
+        #endregion
+
         public string MapImagesVer { get; set; } = "0\n"; //uhh newline cause it's just there by default in github idk idc
 
-
-        #region dawntrail prompt stuff. idk reminder for future expansion
-
-        //todo rename/resuse this stuff in 5 years when the next expansion comes out if i'm still playing
-        public bool DawntrailSubmitPositionsData = false;
-        public bool DawntrailAlreadyPrompted = false;
-        #endregion
 
         [NonSerialized]
         private IDalamudPluginInterface? _pluginInterface;
