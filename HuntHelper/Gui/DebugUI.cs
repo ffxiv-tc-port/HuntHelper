@@ -195,7 +195,7 @@ namespace HuntHelper.Gui
                     }
                     ImGui.Separator();
                 }
-                ImGui.BeginGroup();
+                ImGui.EndGroup();
             }
         }
 
