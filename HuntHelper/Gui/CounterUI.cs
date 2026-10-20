@@ -101,8 +101,8 @@ public unsafe partial class CounterUI : IDisposable
             };
 
             counter();
-            ImGui.End();
         }
+        ImGui.End();
     }
 
     private void DrawCounter()

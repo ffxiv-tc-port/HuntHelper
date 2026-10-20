@@ -722,8 +722,8 @@ namespace HuntHelper.Gui
                     /*ImGui.TextUnformatted($"{ImGui.GetWindowSize()}");
                     ImGui.TextUnformatted($"{ImGui.GetContentRegionAvail()}");*/
 
-                    ImGui.EndChild();
                 }
+                ImGui.EndChild();
 
                 ImGui.NextColumn();
                 if (ImGui.BeginTabBar("Options", ImGuiTabBarFlags.FittingPolicyScroll))
@@ -791,8 +791,8 @@ namespace HuntHelper.Gui
                             }
 
                             //ImGui.SameLine(); ImGui.Text($"{ImGui.GetWindowSize()}");
-                            ImGui.EndChild();
                         }
+                        ImGui.EndChild();
 
 
                         ImGui.SameLine();
@@ -820,8 +820,7 @@ namespace HuntHelper.Gui
                                 ImGui.TableSetupColumn("test", ImGuiTableColumnFlags.WidthFixed, 5f);
                                 ImGui.Dummy(new Vector2(0f, 0f));
                                 ImGui.PushItemWidth(intWidgetWidth);
-                                ImGui.InputInt("", ref _currentWindowSize, 0);
-                                ImGui.PopID(); //popid so it can be used by another element
+                                ImGui.InputInt("##CurrentWindowSize", ref _currentWindowSize, 0);
 
                                 ImGui.TableNextColumn();
                                 ImGui.Dummy(new Vector2(0f, 0f));
@@ -845,13 +844,11 @@ namespace HuntHelper.Gui
                                 ImGui.TableNextColumn();
                                 ImGui.Dummy(new Vector2(0f, 0f));
                                 ImGui.PushItemWidth(intWidgetWidth);
-                                ImGui.InputInt("", ref _presetOneWindowSize, 0);
-                                ImGui.PopID();
+                                ImGui.InputInt("##PresetOneWindowSize", ref _presetOneWindowSize, 0);
 
                                 ImGui.TableNextColumn();
                                 ImGui.Dummy(new Vector2(0f, 0f));
-                                if (ImGui.Button(GuiResources.MapGuiText["SaveButton"])) SavePreset(1);
-                                ImGui.PopID();
+                                if (ImGui.Button($"{GuiResources.MapGuiText["SaveButton"]}##SavePresetOne")) SavePreset(1);
                                 ImGui.TableNextColumn();
 
                                 // Window Size Preset 2
@@ -866,13 +863,11 @@ namespace HuntHelper.Gui
                                 ImGui.TableNextColumn();
                                 ImGui.Dummy(new Vector2(0f, 0f));
                                 ImGui.PushItemWidth(intWidgetWidth);
-                                ImGui.InputInt("", ref _presetTwoWindowSize, 0);
-                                ImGui.PopID();
+                                ImGui.InputInt("##PresetTwoWindowSize", ref _presetTwoWindowSize, 0);
 
                                 ImGui.TableNextColumn();
                                 ImGui.Dummy(new Vector2(0f, 0f));
-                                if (ImGui.Button(GuiResources.MapGuiText["SaveButton"])) SavePreset(2);
-                                ImGui.PopID();
+                                if (ImGui.Button($"{GuiResources.MapGuiText["SaveButton"]}##SavePresetTwo")) SavePreset(2);
                                 ImGui.EndTable();
 
                                 //Map Image Opacity Slider
@@ -896,8 +891,8 @@ namespace HuntHelper.Gui
                             }
 
                             //ImGui.SameLine(); ImGui.Text($"{ImGui.GetWindowSize()}");
-                            ImGui.EndChild();
                         }
+                        ImGui.EndChild();
 
 
                         ImGui.EndTabItem();
@@ -1099,8 +1094,8 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker("發現這一階的魔物時，請 TataruPraise（塔塔露誇獎）念一句把你叫回來。\n需要另外安裝該插件；沒裝的話勾了也不會有任何事發生，也不會影響狩獵追蹤。\n同一隻怪十分鐘內只會念一次（用怪物本身的識別去重，不看訊息文字）。");
 
-                                    ImGui.EndChild();
                                 }
+                                ImGui.EndChild();
 
                                 ImGui.EndTabItem();
                             }
@@ -1145,8 +1140,8 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker("發現這一階的魔物時，請 TataruPraise（塔塔露誇獎）念一句把你叫回來。\n需要另外安裝該插件；沒裝的話勾了也不會有任何事發生，也不會影響狩獵追蹤。\n同一隻怪十分鐘內只會念一次（用怪物本身的識別去重，不看訊息文字）。");
 
-                                    ImGui.EndChild();
                                 }
+                                ImGui.EndChild();
 
                                 ImGui.EndTabItem();
                             }
@@ -1196,8 +1191,8 @@ namespace HuntHelper.Gui
                                     ImGui.SameLine();
                                     ImGuiUtil.ImGui_HelpMarker("Saves S Rank Information to desktop txt (ToDo - let's be honest, i'm never going to remember to do this)");*/
 
-                                    ImGui.EndChild();
                                 }
+                                ImGui.EndChild();
 
                                 ImGui.EndTabItem();
                             }
@@ -1300,8 +1295,8 @@ namespace HuntHelper.Gui
 
                                     ImGui.InputTextMultiline("##cosmetic tag info", ref tags, 500,
                                         new Vector2(600f * ImGuiHelpers.GlobalScale, 80 * ImGuiHelpers.GlobalScale), ImGuiInputTextFlags.ReadOnly);
-                                    ImGui.EndChild();
                                 }
+                                ImGui.EndChild();
 
                                 ImGui.EndTabItem();
                             }
@@ -1363,8 +1358,8 @@ namespace HuntHelper.Gui
 
                                 ImGui.EndTable();
                             }
-                            ImGui.EndChild();
                         }
+                        ImGui.EndChild();
 
                         ImGui.EndTabItem();
                     }
@@ -2116,8 +2111,8 @@ namespace HuntHelper.Gui
                 ImGui.Text(GuiResources.MapGuiText["ImageDownloadManualMessageTwo"]);
                 ImGui.Dummy(new Vector2(52, 0));
                 ImGui.InputText("##folder dir", ref imageDir, 30, ImGuiInputTextFlags.ReadOnly);
-                ImGui.End();
             }
+            ImGui.End();
         }
 
         private void UpdateStats()

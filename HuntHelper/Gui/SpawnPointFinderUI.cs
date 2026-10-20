@@ -125,8 +125,8 @@ public unsafe class SpawnPointFinderUI : IDisposable//idk what to call this
                     }
                     ImGui.EndTable();
                 }
-                ImGui.EndChild();
             }
+            ImGui.EndChild();
             ImGui.Separator();
             if (!_recordAll)
             {
@@ -170,8 +170,8 @@ public unsafe class SpawnPointFinderUI : IDisposable//idk what to call this
             ImGuiUtil.ImGui_HoveredToolTip(GuiResources.SpawnPointerFinderGuiText["ImportButtonToolTip"]);
 
             DrawImportModal();
-            ImGui.End();
         }
+        ImGui.End();
     }
 
     private void DrawImportModal()
@@ -188,6 +188,7 @@ public unsafe class SpawnPointFinderUI : IDisposable//idk what to call this
                 ImGui.Dummy(new Vector2(0, 25));
                 ImGui.Dummy(new Vector2(6, 0)); ImGui.SameLine();
                 if (ImGui.Button(GuiResources.SpawnPointerFinderGuiText["CloseButton"], new Vector2(80, 0))) ImGui.CloseCurrentPopup();
+                ImGui.EndPopup();
                 return;
             }
 

@@ -66,8 +66,8 @@ public class PointerUI
         if (ImGui.Begin($"POINTER##{mob.NameId}", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoBackground))
         {
             DrawDiamond(floatingPointingIconThingyColour);
-            ImGui.End();
         }
+        ImGui.End();
         ImGui.PopStyleVar(); // window padding
         //pointer when off screen
         var screenSize = ImGuiHelpers.MainViewport.Size;
@@ -101,8 +101,8 @@ public class PointerUI
         if (ImGui.Begin($"DIRECTIONTOPOINTER##{mob.NameId}", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoBackground))
         {
             DrawDiamond(floatingPointingIconThingyColour);
-            ImGui.End();
         }
+        ImGui.End();
         ImGui.PopStyleVar();
 
     }

@@ -398,8 +398,8 @@ public class HuntTrainUI : IDisposable
             if (_teleportManager.TeleportPluginNotFound) ImGui.OpenPopup($"{GuiResources.HuntTrainGuiText["TeleportWindowTitle"]}##ModalPopupWindowThingymajig");
             DrawTeleportPluginNotFoundModal();
 
-            ImGui.End();
         }
+        ImGui.End();
         ImGui.PopStyleVar(3); // itemspacing,  scrollbar sizing, window padding
     }
 
@@ -468,6 +468,7 @@ public class HuntTrainUI : IDisposable
                 ImGui.Dummy(new Vector2(0, 25));
                 ImGui.Dummy(new Vector2(6, 0)); ImGui.SameLine();
                 if (ImGui.Button(GuiResources.HuntTrainGuiText["ImportWindowCloseButton"], new Vector2(80, 0))) ImGui.CloseCurrentPopup();
+                ImGui.EndPopup();
                 return;
             }
 
@@ -497,8 +498,8 @@ public class HuntTrainUI : IDisposable
                     }
                     ImGui.EndTable();
                 }
-                ImGui.EndChild();
             }
+            ImGui.EndChild();
 
             if (ImGui.Checkbox(GuiResources.HuntTrainGuiText["ImportAllCheckbox"], ref _importAll))
             {
@@ -534,7 +535,11 @@ public class HuntTrainUI : IDisposable
             ImGui.SameLine();
             if (ImGui.Button(GuiResources.HuntTrainGuiText["ImportButton"], new Vector2(80, 0)))
             {
-                if (!_importNew && !_importUpdateTime && !_importAll) return;
+                if (!_importNew && !_importUpdateTime && !_importAll)
+                {
+                    ImGui.EndPopup();
+                    return;
+                }
                 ImportTrainData();
                 _importedTrain.Clear();
                 ImGui.CloseCurrentPopup();
