@@ -26,6 +26,11 @@ public unsafe partial class CounterUI : IDisposable
     private readonly List<TrackedFate> _fatesToRemove = new();
     private long _fateResortDueTick; // 0＝沒有待辦的重排；換區後等 1 秒再依剩餘時間重排一次
 
+    // 已判定結束／失敗、但還留在 F.A.T.E. 表上的 id：不再加回清單（否則每幀重記失敗、重設倒數、重排）。
+    // 表上同 id 的狀態不再是結束／失敗（新的一場）或 id 離開表時移除。
+    private readonly HashSet<ushort> _finishedFateIds = new();
+    private readonly HashSet<ushort> _finishedFateIdsOnTable = new();
+
     private sealed class TrackedFate
     {
         public ushort FateId;
@@ -36,6 +41,7 @@ public unsafe partial class CounterUI : IDisposable
         public short Duration;
         public Vector3 Position;
         public bool SeenThisFrame;
+        public bool Expired; // 上一次更新時剩餘時間是否已 ≤0（排序鍵是否為 long.MaxValue）
 
         // 與 Dalamud IFate.TimeRemaining 同一條式子。
         public long TimeRemaining => StartTimeEpoch + Duration - DateTimeOffset.Now.ToUnixTimeSeconds();
@@ -123,18 +129,34 @@ public unsafe partial class CounterUI : IDisposable
         foreach (var tracked in _currentFates)
             tracked.SeenThisFrame = false;
 
-        var added = false;
+        var resort = false;
+        var nowSec = DateTimeOffset.Now.ToUnixTimeSeconds();
+        _finishedFateIdsOnTable.Clear();
         foreach (var fate in _fateTable)
         {
             if (fate == null) continue;
 
             var fateId = fate.FateId;
+            if (_finishedFateIds.Contains(fateId))
+            {
+                if (fate.State is FateState.Ended or FateState.Failed)
+                {
+                    _finishedFateIdsOnTable.Add(fateId);
+                    continue;
+                }
+                _finishedFateIds.Remove(fateId);
+            }
+
             var tracked = FindTrackedFate(fateId);
             if (tracked == null)
             {
                 tracked = new TrackedFate { FateId = fateId };
                 _currentFates.Add(tracked);
-                added = true;
+                resort = true;
+            }
+            else if (tracked.StartTimeEpoch != fate.StartTimeEpoch || tracked.Duration != fate.Duration)
+            {
+                resort = true;
             }
 
             tracked.State = fate.State;
@@ -144,11 +166,22 @@ public unsafe partial class CounterUI : IDisposable
             tracked.Position = fate.Position;
             if (tracked.Name.Length == 0) tracked.Name = fate.Name.ToString();
             tracked.SeenThisFrame = true;
+
+            // 剩餘時間同速遞減：先後只在開始／持續時間變了（準備中→進行中）或剩餘時間剛歸零時改變。
+            var expired = tracked.StartTimeEpoch + tracked.Duration - nowSec <= 0;
+            if (expired != tracked.Expired)
+            {
+                tracked.Expired = expired;
+                resort = true;
+            }
         }
+
+        if (_finishedFateIds.Count != _finishedFateIdsOnTable.Count)
+            _finishedFateIds.IntersectWith(_finishedFateIdsOnTable);
 
         var resortDue = _fateResortDueTick != 0 && Environment.TickCount64 >= _fateResortDueTick;
         if (resortDue) _fateResortDueTick = 0;
-        if (added || resortDue) SortCurrentFates();
+        if (resort || resortDue) SortCurrentFates();
 
 #if DEBUG
         ImGui.PushFont(UiBuilder.MonoFont);
@@ -174,7 +207,7 @@ public unsafe partial class CounterUI : IDisposable
 #endif
     }
 
-    // 穩定排序（同剩餘時間者保持加入順序）；只在有新 F.A.T.E. 或換區後重排時呼叫。
+    // 穩定排序（同剩餘時間者保持加入順序）；只在有新 F.A.T.E.、排序鍵改變或換區後重排時呼叫。
     private void SortCurrentFates()
     {
         var sorted = _currentFates.OrderBy(f => f.SortKey).ToList();
@@ -200,6 +233,7 @@ public unsafe partial class CounterUI : IDisposable
 
             if (cf.State == FateState.Ended)
             {
+                _finishedFateIds.Add(cf.FateId);
                 _fatesToRemove.Add(cf);
                 continue;
             }
@@ -207,6 +241,7 @@ public unsafe partial class CounterUI : IDisposable
             if (cf.State == FateState.Failed)
             {
                 RecordFateFailure(cf, "FAIL");
+                _finishedFateIds.Add(cf.FateId);
                 _fatesToRemove.Add(cf);
             }
         }
@@ -308,6 +343,7 @@ public unsafe partial class CounterUI : IDisposable
     private void ClientState_TerritoryChanged(ushort e)
     {
         _currentFates.Clear();
+        _finishedFateIds.Clear();
         _startTime = DateTime.Now;
         _lastFailedFateInfo = string.Empty;
         _fateResortDueTick = Environment.TickCount64 + 1000;
