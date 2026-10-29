@@ -159,6 +159,7 @@ namespace HuntHelper.Gui
         private bool _tataruPraiseAEnabled = false;
         private bool _tataruPraiseBEnabled = false;
         private bool _tataruPraiseSEnabled = true;
+        private int _notificationCooldownMinutes = 5;
         private bool _pointToARank = true;
         private bool _pointToBRank = true;
         private bool _pointToSRank = true;
@@ -1199,7 +1200,7 @@ namespace HuntHelper.Gui
 
                             if (ImGui.BeginTabItem(GuiResources.MapGuiText["SettingsTab"]))
                             {
-                                _bottomPanelHeight = tabBarHeight + 98f * ImGuiHelpers.GlobalScale;
+                                _bottomPanelHeight = tabBarHeight + 122f * ImGuiHelpers.GlobalScale;
 
                                 ImGui.Dummy(new Vector2(0f, 2f));
                                 if (ImGui.BeginTable("##settings table", 2, ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY))
@@ -1272,6 +1273,22 @@ namespace HuntHelper.Gui
                                     }
 
                                     ImGuiUtil.ImGui_HoveredToolTip(GuiResources.MapGuiText["PointerSizeToolTip"]);
+
+                                    ImGui.TableNextColumn();
+                                    ImGui.Text(GuiResources.MapGuiText.GetValueOrDefault("NotificationCooldownLabel", "Notification Cooldown (min)"));
+
+                                    ImGui.TableNextColumn();
+                                    ImGui.PushItemWidth(100f * ImGuiHelpers.GlobalScale);
+                                    if (ImGui.DragInt("##New Mob Notification Cooldown", ref _notificationCooldownMinutes, 0.2f, 0, 60))
+                                    {
+                                        _huntManager.NotificationCooldownMinutes = _notificationCooldownMinutes;
+                                        _notificationCooldownMinutes = _huntManager.NotificationCooldownMinutes;
+                                        _configuration.NewMobNotificationCooldownMinutes = _notificationCooldownMinutes;
+                                    }
+                                    ImGui.PopItemWidth();
+                                    ImGui.SameLine();
+                                    ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText.GetValueOrDefault("NotificationCooldownToolTip",
+                                        "The same hunt mob (same world, zone and instance) only triggers chat / TTS / FlyText / Tataru voice once within this many minutes.\n0 = off."));
                                     ImGui.EndTable();
                                 }
 
@@ -1547,6 +1564,7 @@ namespace HuntHelper.Gui
             _configuration.TataruPraiseAEnabled = _tataruPraiseAEnabled;
             _configuration.TataruPraiseBEnabled = _tataruPraiseBEnabled;
             _configuration.TataruPraiseSEnabled = _tataruPraiseSEnabled;
+            _configuration.NewMobNotificationCooldownMinutes = _notificationCooldownMinutes;
             _configuration.PointToARank = _pointToARank;
             _configuration.PointToBRank = _pointToBRank;
             _configuration.PointToSRank = _pointToSRank;
@@ -1634,6 +1652,8 @@ namespace HuntHelper.Gui
             _tataruPraiseAEnabled = _configuration.TataruPraiseAEnabled;
             _tataruPraiseBEnabled = _configuration.TataruPraiseBEnabled;
             _tataruPraiseSEnabled = _configuration.TataruPraiseSEnabled;
+            _huntManager.NotificationCooldownMinutes = _configuration.NewMobNotificationCooldownMinutes;
+            _notificationCooldownMinutes = _huntManager.NotificationCooldownMinutes;
             _pointToARank = _configuration.PointToARank;
             _pointToBRank = _configuration.PointToBRank;
             _pointToSRank = _configuration.PointToSRank;

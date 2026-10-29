@@ -75,6 +75,18 @@ public class HuntManager : IDisposable
     /// <summary>同一隻怪在這段時間內不會再出第二次聲。</summary>
     private const long PraiseDedupeWindowMs = 10 * 60 * 1000;
 
+    // 只在 UI 執行緒（MapUI.Draw → AddNearbyMobs）讀寫；刻意不用 EzThrottler（全插件共用、非執行緒安全）。
+    private readonly NotifyCooldownTable _notifyCooldowns = new();
+
+    private int _notificationCooldownMinutes = 5;
+
+    /// <summary>同一隻魔物的發現通知冷卻（分鐘），0＝關閉。只擋聊天／語音／浮空文字／塔塔露語音，不擋任何資料面。</summary>
+    public int NotificationCooldownMinutes
+    {
+        get => _notificationCooldownMinutes;
+        set => _notificationCooldownMinutes = Math.Clamp(value, 0, 60);
+    }
+
     private ulong? _priorityMobId;
     private HuntRank _highestRank;
 
@@ -329,36 +341,66 @@ public class HuntManager : IDisposable
             //if exists in old mob set, skip tts + chat
             if (_previousMobNameIds.Contains(mob.NameId)) continue;
 
+            // MarkSeen 是給別的插件（如 TCToolbox 的列車同步）的資料事件，計數也是資料，都不吃通知冷卻。
             MarkSeen?.Invoke(mob.ToHuntTrainMob(territoryId, mapid, instance, MapHelpers.GetMapName(territoryId), zoneMapCoordSize));
 
             //Do tts and chat stuff
             var rank = GetHuntRank(mob.NameId);
+            var notify = PassNotifyCooldown(mob, territoryId, instance);
             switch (rank)
             {
                 case HuntRank.A:
-                    NewMobFoundTTS(aTTS, aTTSmsg, mob);
-                    SendChatMessage(chatA, chatAmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
-                    SendFlyText(rank, mob, flyTxtA);
-                    TryPraiseNewMob(praiseA, rank, mob);
+                    if (notify)
+                    {
+                        NewMobFoundTTS(aTTS, aTTSmsg, mob);
+                        SendChatMessage(chatA, chatAmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
+                        SendFlyText(rank, mob, flyTxtA);
+                        TryPraiseNewMob(praiseA, rank, mob);
+                    }
                     ACount++;
                     break;
                 case HuntRank.B:
-                    NewMobFoundTTS(bTTS, bTTSmsg, mob);
-                    SendChatMessage(chatB, chatBmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
-                    SendFlyText(rank, mob, flyTxtB);
-                    TryPraiseNewMob(praiseB, rank, mob);
+                    if (notify)
+                    {
+                        NewMobFoundTTS(bTTS, bTTSmsg, mob);
+                        SendChatMessage(chatB, chatBmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
+                        SendFlyText(rank, mob, flyTxtB);
+                        TryPraiseNewMob(praiseB, rank, mob);
+                    }
                     BCount++;
                     break;
                 case HuntRank.S:
                 case HuntRank.SS: //don't think ss is actually used lol
-                    NewMobFoundTTS(sTTS, sTTSmsg, mob);
-                    SendChatMessage(chatS, chatSmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
-                    SendFlyText(rank, mob, flyTxtS);
-                    TryPraiseNewMob(praiseS, rank, mob);
+                    if (notify)
+                    {
+                        NewMobFoundTTS(sTTS, sTTSmsg, mob);
+                        SendChatMessage(chatS, chatSmsg, territoryId, mapid, instance, mob, zoneMapCoordSize);
+                        SendFlyText(rank, mob, flyTxtS);
+                        TryPraiseNewMob(praiseS, rank, mob);
+                    }
                     SCount++;
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// 這次「新發現」要不要送使用者看得到／聽得到的通知。通過時當場記下時間，冷卻從上一次真的送出算起。
+    /// 換區域／換世界不清表：鍵本身含世界與區域，回到原處時同一隻怪仍在冷卻內就不重複叫。
+    /// </summary>
+    private bool PassNotifyCooldown(IBattleNpc mob, uint territoryId, uint instance)
+    {
+        var cooldownMs = (long)_notificationCooldownMinutes * 60_000;
+        if (cooldownMs <= 0) return true;
+
+        // id 與世界都在這一幀當場抄成純資料，不留任何包裝。
+        var key = new NotifyCooldownKey(_objectTable.LocalPlayer?.CurrentWorld.RowId ?? 0, territoryId, instance, mob.NameId);
+        if (_notifyCooldowns.TryPass(key, mob.GameObjectId, Environment.TickCount64, cooldownMs, out var remainingMs, out var firstSuppression))
+            return true;
+
+        if (firstSuppression)
+            PluginLog.Information($"[發現通知冷卻] {mob.Name}（副本 {instance}）再次進入範圍，冷卻剩 {remainingMs / 1000} 秒，這段時間內不再重複通知。");
+        return false;
     }
 
     #region rework later?

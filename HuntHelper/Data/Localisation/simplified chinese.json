@@ -104,6 +104,8 @@
 		"VoiceTestButton": "Test",
 		"PointerSizeLabel": "指针尺寸:",
 		"PointerSizeToolTip": "钻石指针的大小缩放",
+		"NotificationCooldownLabel": "通知冷却（分钟）：",
+		"NotificationCooldownToolTip": "同一只怪物在这段时间内只会通知一次（聊天信息、TTS、弹出文本、塔塔露语音）。\n怪物走出侦测范围再回来不会重复通知；被击倒后重新出现的算另一只，照常通知。\n地图上的标示、车队记录与发现次数不受影响。\n0＝关闭。",
 
 		"AvailableTagsTab": "可用标签",
 		"AvailableTagsToolTip": "双击来高亮标签便于复制和粘贴。 --在TTS中只有 <name> 和 <rank> 有效",

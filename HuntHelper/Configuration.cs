@@ -128,6 +128,9 @@ namespace HuntHelper
         public bool TataruPraiseSEnabled { get; set; } = true;
         #endregion
 
+        // 同一隻魔物的發現通知冷卻（分鐘），0＝關閉。舊設定檔缺這個鍵時保留這裡的初始值。
+        public int NewMobNotificationCooldownMinutes { get; set; } = 5;
+
         public bool PointToARank { get; set; } = false;
         public bool PointToBRank { get; set; } = false;
         public bool PointToSRank { get; set; } = false;

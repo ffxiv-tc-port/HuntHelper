@@ -104,6 +104,8 @@
 		"VoiceTestButton": "Test",
 		"PointerSizeLabel": "Pointer Size:",
 		"PointerSizeToolTip": "Size modifier for the diamond pointer",
+		"NotificationCooldownLabel": "Notification Cooldown (min):",
+		"NotificationCooldownToolTip": "The same hunt mob only notifies once within this many minutes (chat message, TTS, FlyText, Tataru voice).\nWalking out of detection range and back will not repeat it; a mob that respawns after being killed counts as a new one.\nMap markers, train records and found counts are not affected.\n0 = off.",
 
 		"AvailableTagsTab": "Available Tags",
 		"AvailableTagsToolTip": "DOUBLE CLICK to easily highlight a tag option for copy and paste.  \n-- ONLY <name> and <rank> work with TTS",

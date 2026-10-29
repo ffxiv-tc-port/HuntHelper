@@ -104,6 +104,8 @@
 		"VoiceTestButton": "測試",
 		"PointerSizeLabel": "指標大小：",
 		"PointerSizeToolTip": "菱形指標的大小倍率",
+		"NotificationCooldownLabel": "通知冷卻（分鐘）：",
+		"NotificationCooldownToolTip": "同一隻魔物在這段時間內只會通知一次（聊天訊息、TTS、浮空文字、塔塔露語音）。\n魔物走出偵測範圍再回來不會重複通知；被打倒後重新出現的算另一隻，照常通知。\n地圖上的標示、列車紀錄與發現次數不受影響。\n0＝關閉。",
 
 		"AvailableTagsTab": "可用標籤",
 		"AvailableTagsToolTip": "雙擊可快速選取標籤以便複製貼上。  \n-- TTS 只支援 <name> 與 <rank>",
