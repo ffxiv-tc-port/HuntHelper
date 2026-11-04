@@ -818,7 +818,6 @@ namespace HuntHelper.Gui
                                 ImGuiUtil.ImGui_HelpMarker(GuiResources.MapGuiText["WindowSizeToolTip"]);
 
                                 ImGui.TableNextColumn();
-                                ImGui.TableSetupColumn("test", ImGuiTableColumnFlags.WidthFixed, 5f);
                                 ImGui.Dummy(new Vector2(0f, 0f));
                                 ImGui.PushItemWidth(intWidgetWidth);
                                 ImGui.InputInt("##CurrentWindowSize", ref _currentWindowSize, 0);
